@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Game Jam 选题决策器</title>
+<style>
+  :root { --bg:#f5f7fb; --card:#ffffff; --text:#1f2733; --muted:#6b7280; --blue:#2563eb; --blue-l:#eaf1fe; --green:#16a34a; --red:#dc2626; --gold:#f59e0b; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); padding:24px; line-height:1.6; }
+  .wrap { max-width:720px; margin:0 auto; }
+  h1 { font-size:24px; margin-bottom:4px; }
+  .sub { color:var(--muted); font-size:14px; margin-bottom:20px; }
+  .card { background:var(--card); border-radius:14px; padding:20px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+  .card h2 { font-size:16px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+  .step { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; background:var(--blue); color:#fff; border-radius:50%; font-size:13px; font-weight:600; }
+  input[type=text] { width:100%; padding:12px 14px; border:1px solid #d1d5db; border-radius:10px; font-size:16px; outline:none; }
+  input[type=text]:focus { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-l); }
+  .chip-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .chip { padding:8px 16px; border-radius:20px; background:#eef2f7; cursor:pointer; font-size:14px; border:2px solid transparent; user-select:none; }
+  .chip.active { background:var(--blue-l); border-color:var(--blue); color:var(--blue); font-weight:600; }
+  .result-box { background:var(--blue-l); border-radius:10px; padding:14px; margin-top:12px; font-size:15px; }
+  .result-box b { color:var(--blue); }
+  .score-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0; }
+  .score-row:last-child { border-bottom:none; }
+  .metric-name { font-size:14px; }
+  .metric-weight { color:var(--muted); font-size:12px; margin-left:6px; }
+  select { padding:6px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:15px; }
+  .total { font-size:22px; font-weight:700; color:var(--blue); text-align:right; padding:12px 0; }
+  .verdict { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:16px; margin-top:12px; }
+  .verdict h3 { color:var(--green); margin-bottom:8px; }
+  .verdict p { font-size:14px; margin-bottom:4px; }
+  .warn { color:var(--red); }
+  .hint { color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎯 AI Game Jam 选题决策器</h1>
+  <p class="sub">主题公布后 60 秒内 → 分类 → 推荐模板 → 打分 → 拍板。全自动算分，不靠感觉。</p>
+
+  <!-- Step 1: 输入主题 -->
+  <div class="card">
+    <h2><span class="step">1</span> 输入现场主题</h2>
+    <input type="text" id="theme" placeholder="例如：重生 / 守护 / 最后一束光 / 时间..." oninput="render()">
+    <div class="hint">只填主题关键词，先别想游戏。</div>
+  </div>
+
+  <!-- Step 2: 情绪倾向 -->
+  <div class="card">
+    <h2><span class="step">2</span> 这个主题更偏什么情绪？</h2>
+    <div class="chip-row" id="emotionChips"></div>
+  </div>
+
+  <!-- Step 3: 玩家主要做什么（5秒分类） -->
+  <div class="card">
+    <h2><span class="step">3</span> 玩家主要在做什么？（5 秒分类法）</h2>
+    <div class="chip-row" id="actionChips"></div>
+    <div class="result-box" id="templateResult"></div>
+  </div>
+
+  <!-- Step 4: 评分 -->
+  <div class="card">
+    <h2><span class="step">4</span> 100 分评分表</h2>
+    <div id="scoreRows"></div>
+    <div class="total">总分：<span id="totalScore">0</span> / 100</div>
+  </div>
+
+  <!-- 结果 -->
+  <div class="card">
+    <h2><span class="step">5</span> 决策结论</h2>
+    <div id="verdict"></div>
+  </div>
+</div>
+
+<script>
+// ===== 数据 =====
+const EMOTIONS = ["治愈/温暖","刺激/冒险","神秘/探索","创造/新生","守护/责任","竞技/挑战"];
+const ACTIONS = [
+  { key:"collect", label:"A 创造东西", tpl:"template_collect_create", name:"收集/重组/创造" },
+  { key:"defense", label:"B 保护东西", tpl:"template_defense", name:"保护/防守/守护" },
+  { key:"choice",  label:"C 做选择",   tpl:"template_choice",  name:"选择/分支/后果" },
+  { key:"action",  label:"D 操作挑战", tpl:"template_action",  name:"反应/躲避/操作" },
+  { key:"find",    label:"E 发现秘密", tpl:"template_find",    name:"寻找/观察/解谜" },
+];
+
+// 情绪 → 推荐动作（第一选择/第二选择）
+const EMOTION_MAP = {
+  "治愈/温暖": ["collect","defense"],
+  "刺激/冒险": ["action","defense"],
+  "神秘/探索": ["find","collect"],
+  "创造/新生": ["collect","choice"],
+  "守护/责任": ["defense","collect"],
+  "竞技/挑战": ["action","defense"],
+};
+
+const METRICS = [
+  { key:"playability", name:"30秒核心玩法清晰度", weight:5 },
+  { key:"finish",      name:"48小时完成概率",     weight:5 },
+  { key:"theme",       name:"主题创新解释力",     weight:3 },
+  { key:"memory",      name:"评委记忆点",         weight:3 },
+  { key:"ai",          name:"AI融合自然程度",     weight:2 },
+  { key:"family",      name:"父女团队独特性",     weight:2 },
+];
+
+let state = { emotion:null, action:null, scores:{} };
+METRICS.forEach(m => state.scores[m.key] = 3);
+
+// ===== 渲染 =====
+function renderEmotionChips(){
+  const el = document.getElementById("emotionChips");
+  el.innerHTML = EMOTIONS.map(e =>
+    `<div class="chip ${state.emotion===e?'active':''}" onclick="setEmotion('${e}')">${e}</div>`
+  ).join("");
+}
+function renderActionChips(){
+  const el = document.getElementById("actionChips");
+  el.innerHTML = ACTIONS.map(a =>
+    `<div class="chip ${state.action===a.key?'active':''}" onclick="setAction('${a.key}')">${a.label}</div>`
+  ).join("");
+}
+function renderScores(){
+  const el = document.getElementById("scoreRows");
+  el.innerHTML = METRICS.map(m =>
+    `<div class="score-row">
+      <span class="metric-name">${m.name}<span class="metric-weight">×${m.weight}</span></span>
+      <select onchange="setScore('${m.key}', this.value)">
+        ${[1,2,3,4,5].map(v => `<option value="${v}" ${state.scores[m.key]==v?'selected':''}>${v} 分</option>`).join("")}
+      </select>
+    </div>`
+  ).join("");
+  calcTotal();
+}
+function renderTemplate(){
+  const box = document.getElementById("templateResult");
+  if(!state.action){ box.innerHTML = "👆 选一个玩家动作，自动推荐模板"; return; }
+  const a = ACTIONS.find(x => x.key === state.action);
+  const emotionRec = state.emotion ? EMOTION_MAP[state.emotion] : null;
+  let extra = "";
+  if(emotionRec && emotionRec[0] === state.action){
+    extra = ` ✅ 与「${state.emotion}」情绪高度匹配`;
+  } else if(emotionRec && emotionRec[1] === state.action){
+    extra = ` ⭕ 与「${state.emotion}」情绪第二匹配`;
+  }
+  box.innerHTML = `推荐模板：<b>${a.name}</b>（目录 <b>${a.tpl}</b>）${extra}`;
+}
+function calcTotal(){
+  let total = 0;
+  METRICS.forEach(m => total += state.scores[m.key] * m.weight);
+  document.getElementById("totalScore").textContent = total;
+  renderVerdict(total);
+}
+function renderVerdict(total){
+  const el = document.getElementById("verdict");
+  const theme = document.getElementById("theme").value || "（未填主题）";
+  const a = state.action ? ACTIONS.find(x => x.key===state.action) : null;
+
+  // 淘汰规则
+  const finish = state.scores.finish;
+  const play = state.scores.playability;
+  if(finish < 3){ el.innerHTML = `<div class="verdict"><h3>🚫 淘汰：完成概率过低</h3><p class="warn">48h 完成概率 &lt;3 分，直接淘汰，换方案。</p></div>`; return; }
+  if(play < 4){ el.innerHTML = `<div class="verdict"><h3>🚫 淘汰：核心玩法不清晰</h3><p class="warn">核心玩法 &lt;4 分，玩法立不住，回 Step 3 重想。</p></div>`; return; }
+
+  let verdict = "🟡 中规中矩，可做但缺记忆点";
+  if(total >= 80) verdict = "🟢 高概率冲奖，拍板开工";
+  else if(total >= 65) verdict = "🟢 值得做，重点补记忆点";
+
+  const tpl = a ? a.tpl : "（未选模板）";
+  el.innerHTML = `
+    <div class="verdict">
+      <h3>${verdict}</h3>
+      <p><b>主题：</b>${theme}</p>
+      <p><b>模板：</b>${tpl}${a ? "（"+a.name+"）" : ""}</p>
+      <p><b>总分：</b>${total} / 100</p>
+      <p><b>下一步：</b>复制模板目录 → 用 architecture.md 让 Codex 建项目地图 → 开工</p>
+    </div>`;
+}
+
+// ===== 事件 =====
+function setEmotion(e){ state.emotion = e; renderEmotionChips(); renderTemplate(); }
+function setAction(k){ state.action = k; renderActionChips(); renderTemplate(); }
+function setScore(k, v){ state.scores[k] = parseInt(v); calcTotal(); }
+function render(){
+  renderEmotionChips();
+  renderActionChips();
+  renderTemplate();
+  renderScores();
+}
+render();
+</script>
+</body>
+</html>
