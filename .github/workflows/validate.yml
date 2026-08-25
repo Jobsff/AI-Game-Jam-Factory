@@ -28,7 +28,7 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          grep -vE "^(ℹ|✖|﹣|✔|ok|# |[[:space:]]*$)" test-output.log | head -c 4500 | fold -s -w 480 | while IFS= read -r line; do
+          awk '/^not ok/{print; next} /error: \|-/{p=1; print; next} /^  stack:/{p=0} p{print}' test-output.log | head -c 4500 | fold -s -w 480 | while IFS= read -r line; do
             echo "::error::${line}"
           done
       - name: Repository validation
