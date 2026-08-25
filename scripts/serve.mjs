@@ -43,7 +43,12 @@ export function createStaticServer({ root = process.cwd(), host = "127.0.0.1", p
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new RangeError("port must be an integer between 0 and 65535");
 
   const base = path.resolve(root);
-  const canonicalBase = realpath(base);
+  // 惰性化：仅在真正被 await 时才创建 realpath promise，避免无人处理时以 unhandledRejection 崩溃
+  let canonicalBase = null;
+  const resolveCanonicalBase = () => {
+    canonicalBase ??= realpath(base);
+    return canonicalBase;
+  };
   const server = createServer(async (request, response) => {
     if (!new Set(["GET", "HEAD"]).has(request.method)) {
       sendText(response, 405, "Method Not Allowed", { Allow: "GET, HEAD" });
@@ -67,7 +72,7 @@ export function createStaticServer({ root = process.cwd(), host = "127.0.0.1", p
       }
       if (!info.isFile()) throw Object.assign(new Error("Not found"), { code: "ENOENT" });
 
-      const [realBase, realFile] = await Promise.all([canonicalBase, realpath(file)]);
+      const [realBase, realFile] = await Promise.all([resolveCanonicalBase(), realpath(file)]);
       if (!isInside(realBase, realFile)) {
         sendText(response, 403, "Forbidden");
         return;
@@ -93,14 +98,18 @@ export function createStaticServer({ root = process.cwd(), host = "127.0.0.1", p
 
   return {
     server,
-    listen: () => new Promise((resolve, reject) => {
-      const onError = (error) => reject(error);
-      server.once("error", onError);
-      server.listen(port, host, () => {
-        server.off("error", onError);
-        resolve(server.address());
+    listen: async () => {
+      // 不存在的 root：在绑定端口前以 rejected promise 干净失败，不得先报成功后崩
+      await resolveCanonicalBase();
+      return new Promise((resolve, reject) => {
+        const onError = (error) => reject(error);
+        server.once("error", onError);
+        server.listen(port, host, () => {
+          server.off("error", onError);
+          resolve(server.address());
+        });
       });
-    }),
+    },
     close: () => new Promise((resolve, reject) => {
       if (!server.listening) { resolve(); return; }
       server.close((error) => error ? reject(error) : resolve());
@@ -112,8 +121,15 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const root = path.resolve(process.argv[2] ?? process.cwd());
   const host = process.env.HOST ?? "127.0.0.1";
   const port = Number(process.env.PORT ?? 4173);
-  const service = createStaticServer({ root, host, port });
-  service.listen()
-    .then(() => console.log(`Factory server: http://${host}:${port}/\nRoot: ${root}`))
+  let service;
+  try {
+    service = createStaticServer({ root, host, port });
+  } catch (error) {
+    // 构造期同步校验失败（如非法 PORT）：单行可读错误快速失败，不泄漏栈与路径
+    console.error(error.message);
+    process.exitCode = 1;
+  }
+  service?.listen()
+    .then((address) => console.log(`Factory server: http://${host}:${address.port}/\nRoot: ${root}`))
     .catch((error) => { console.error(error.message); process.exitCode = 1; });
 }

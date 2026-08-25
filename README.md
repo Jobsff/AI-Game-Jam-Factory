@@ -1,6 +1,6 @@
 # AI Game Jam Factory
 
-离线优先的现场作战系统：60 分钟唯一方案决策、5 个 Phaser 玩法母件、Prefab/Core、Codex 三层地图与模块契约、Prompt/资产生产线、四阶段验收与 Node 20 CI 门槛。
+离线优先的现场作战系统：60 分钟唯一方案决策、5 个 Phaser 玩法母件、Prefab/Core、Codex 三层地图与模块契约、Prompt/资产生产线、四阶段验收与 Node 20/22/24 CI 矩阵门槛。
 
 ## 5 分钟 Quick Start
 
@@ -49,7 +49,7 @@ npm run new-game -- \
 | `npm run verify` | 顺序运行以上全部门槛 |
 | `git diff --check` | 检查 whitespace error |
 
-`scripts/serve.mjs` 会阻止符号链接逃逸服务根目录；`scripts/validate-game.mjs` 验证生成工程；`scripts/browser-smoke.mjs` 会自动查找 Puppeteer 缓存的 headless-shell。浏览器 smoke 没有浏览器时会报告 skipped；CI/现场最终验收必须提供 Chrome 并通过，不能用 skipped 替代。`scripts/validate.mjs` 以脚本自身位置定位仓库根，任意工作目录下可直接执行。仓库多处使用 `import.meta.dirname`，本地与 CI 均需 Node ≥ 20.11（`package.json` 的 `engines` 已声明该下限）。
+`scripts/serve.mjs` 会阻止符号链接逃逸服务根目录；`scripts/validate-game.mjs` 验证生成工程；`scripts/browser-smoke.mjs` 会自动查找 Puppeteer 缓存的 headless-shell。浏览器 smoke 没有浏览器时会报告 skipped；CI/现场最终验收必须提供 Chrome 并通过，不能用 skipped 替代。`scripts/validate.mjs` 以脚本自身位置定位仓库根，任意工作目录下可直接执行。仓库多处使用 `import.meta.dirname`，本地与 CI 均需 Node ≥ 20.11（`package.json` 的 `engines` 已声明该下限）。CI（`.github/workflows/validate.yml`）为三 job 拓扑：`quality-gates` 以 3 OS × Node 20/22/24 的九腿矩阵运行单测与 validate/smoke，`browser-smoke` 在独立 job 强制要求浏览器，`quality-gates-complete` 聚合两者作为分支保护要求通过的检查。
 
 ## 目录导航
 

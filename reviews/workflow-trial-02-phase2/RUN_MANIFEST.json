@@ -1,0 +1,103 @@
+{
+  "trial": "workflow-trial-02-phase2",
+  "task": "工程生成器事务安全与破坏性路径对抗（create-game / validate-game / serve）",
+  "baseline": {
+    "head": "9b76b6bbbecec6e40991e8921bec3a2d1684eda7",
+    "checkpoint": "/tmp/agjf-trial02p2-checkpoint-20260826-015100",
+    "checkpointManifestSha256": "3f396c531cb7cbaabfa3edfd59f5ea667dda1fd96c6c251a15861f34e8146762",
+    "localBaselineTest": "npm test 33/33 pass (2026-08-26 01:5x)"
+  },
+  "evidenceDir": "/tmp/agjf-trial02p2-evidence",
+  "runs": [
+    {
+      "agent": "KK3",
+      "role": "initial-review",
+      "agentId": "agent_b583e560-0b1b-4f23-8558-b7fa698b027d",
+      "model": "kk3 (ZCode subagent)",
+      "startedAt": "2026-08-25T17:52:30Z",
+      "finishedAt": "2026-08-25T18:11:29Z",
+      "inputHash": "9bc84ebb2a5a6c6d5ea13ef3b44d2f8c8ed0dedb2b261454f8937b80f2364039",
+      "inputTask": "/tmp/agjf-trial02p2-evidence/kk3-initial-task.md（症状 A/B/C，防锚定：不含根因）",
+      "output": "G1(P1 信号中断残留)/G2(P2)/G3(P2)/G4(P1 并发静默删工程)/G5(P1 serve 崩溃)/G6(P2)/G7-G12(P3)；全文收录 reviews/workflow-trial-02-phase2/KK3_INITIAL_REVIEW.md",
+      "modifiedFiles": [],
+      "toolUses": 27,
+      "durationMs": 1138794,
+      "status": "completed"
+    },
+    {
+      "agent": "G53",
+      "role": "implementation",
+      "agentId": "agent_2ce3dc79-c368-42b6-be20-1dfbf343d7dd",
+      "model": "g53 (ZCode subagent)",
+      "startedAt": "2026-08-25T18:16:20Z",
+      "finishedAt": "2026-08-25T18:38:10Z",
+      "inputHash": "8cce0226b32d816439b4e2a10c4e57c66cb37d59b51d621a1a4933b7335a0e89",
+      "inputTask": "/tmp/agjf-trial02p2-evidence/g53-task.md（三批次白名单 + 验收 + 硬约束）",
+      "output": "G1/G2/G3/G4+G9/G8/G5/G6 全修 + U-03；红绿日志与报告见 reviews/workflow-trial-02-phase2/G53_IMPLEMENTATION_REPORT.md",
+      "modifiedFiles": ["scripts/create-game.mjs", "tests/create-game.test.js", "scripts/serve.mjs", "tests/serve.test.js", "README.md"],
+      "toolUses": 62,
+      "durationMs": 1309409,
+      "status": "completed"
+    },
+    {
+      "agent": "MM3",
+      "role": "red-team",
+      "agentId": "agent_392154b9-b30b-4357-b503-0f540d7dd6d1",
+      "model": "mm3 (ZCode subagent)",
+      "startedAt": "2026-08-25T18:45:00Z",
+      "finishedAt": "2026-08-25T19:05:00Z",
+      "inputHash": "9c3a3c6f535669b7b7180b059c715f9c467da167f8a2c22c69420f42162b7115",
+      "inputTask": "/tmp/agjf-trial02p2-evidence/mm3-redteam-task.md（指定攻击下限 + 自行推导攻击面）",
+      "output": "7 组攻击 60+ 复现：G53 修复全部守住（A1 并发/A2 清扫/A3 信号/A4 symlink/A5 serve 零 P0P1）；F0 工作区外部污染 P0（后经外部会话自身修正 AGENTS.md 引用而解除，裁判 03:13 复核 42/42 绿 + verify exit 0）；F1 serve 非法 PORT 泄漏栈 P2（触发返修）；F2/F3/F4 P3。全文见 MM3_RED_TEAM_REPORT.md",
+      "modifiedFiles": [],
+      "toolUses": 96,
+      "durationMs": 1165438,
+      "status": "completed"
+    },
+    {
+      "agent": "G53",
+      "role": "rework",
+      "agentId": "agent_8391ddf6-89c6-4dd4-a646-ab93b75d7503",
+      "model": "g53 (ZCode subagent)",
+      "startedAt": "2026-08-25T19:18:55Z",
+      "finishedAt": "2026-08-25T19:22:40Z",
+      "inputHash": "rework-task-in-prompt（F1：serve 非法 PORT 单行报错，白名单 2 文件）",
+      "inputTask": "F1 返修：scripts/serve.mjs CLI 入口 try/catch + tests/serve.test.js +1 用例，先红后绿",
+      "output": "F1 Fixed；红 g53-rework-red.log（12 行栈）→ 绿 g53-rework-green.log（6/6）→ npm test 43/43；报告见 G53_IMPLEMENTATION_REPORT.md 附录",
+      "modifiedFiles": ["scripts/serve.mjs", "tests/serve.test.js"],
+      "toolUses": 18,
+      "durationMs": 224969,
+      "status": "completed"
+    },
+    {
+      "agent": "MM3",
+      "role": "regression",
+      "agentId": "agent_9e709635-3c25-4862-8b57-14f5a446ccbd",
+      "model": "mm3 (ZCode subagent)",
+      "startedAt": "2026-08-25T19:23:40Z",
+      "finishedAt": "2026-08-25T19:27:46Z",
+      "inputHash": "regression-task-in-prompt（F1 复攻 + 接口语义回归 + 全门槛）",
+      "inputTask": "F1 五路复攻（PORT=abc/-1/99999/1.5、HOST= 空串）+ 程序式接口冻结验证 + G5/G6/405/403/404 回归 + 全门槛 + 工作区完整性",
+      "output": "Go：F1 Fixed，接口冻结成立，43/43 + verify exit 0，零新增改动；报告见 MM3_REGRESSION_REPORT.md",
+      "modifiedFiles": [],
+      "toolUses": 39,
+      "durationMs": 246006,
+      "status": "completed"
+    },
+    {
+      "agent": "KK3",
+      "role": "final-review",
+      "agentId": "agent_74501639-368c-42c5-affe-294eeaf714ae",
+      "model": "kk3 (ZCode subagent)",
+      "startedAt": "2026-08-25T19:29:20Z",
+      "finishedAt": "2026-08-25T19:41:45Z",
+      "inputHash": "final-review-task-in-prompt（终审范围 + 基线快照路径 + 元数据写入边界）",
+      "inputTask": "阶段 6 终审：diff 与裁决一致性、基线隔离、独立重跑验收、F0-F4 处置审查、U-03 销账核验、diff 截止点哈希",
+      "output": "Go：白名单 6/6 零夹带、接口冻结 8/8、独立重跑全过（43/43 + verify 0）、F0 责任链清晰、U-03/U-07 如实；新发现 P3×3（KK3-F1 manifest 缺条目[已补]、KK3-F2 措辞、KK3-F3 G8 TOCTOU 注记）；报告见 KK3_FINAL_REVIEW.md",
+      "modifiedFiles": [],
+      "toolUses": 34,
+      "durationMs": 744899,
+      "status": "completed"
+    }
+  ]
+}

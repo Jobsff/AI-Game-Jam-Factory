@@ -1,4 +1,5 @@
-import { access, cp, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { access, cp, lstat, mkdir, readFile, readdir, realpath, rename, rm, rmdir, writeFile } from "node:fs/promises";
+import { rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -14,6 +15,10 @@ export const TEMPLATES = Object.freeze([
 ]);
 
 const factoryRoot = path.resolve(import.meta.dirname, "..");
+
+const STAGING_SENTINEL = ".factory-staging.json";
+const STAGING_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+let activeStaging = null;
 
 function parseArguments(values) {
   const result = {};
@@ -47,6 +52,95 @@ function replaceTitle(source, name) {
   return source.replace(/title:\s*"[^"]*"/, replacement);
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function stagingNamePattern(basename) {
+  return new RegExp(`^\\.${escapeRegExp(basename)}\\.factory-${STAGING_UUID}$`);
+}
+
+function isPidAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === "EPERM"; // EPERM: 进程存在但属于他人，视为存活
+  }
+}
+
+async function readSentinelPid(directory) {
+  try {
+    const parsed = JSON.parse(await readFile(path.join(directory, STAGING_SENTINEL), "utf8"));
+    if (Number.isSafeInteger(parsed?.pid) && parsed.pid > 0) return parsed.pid;
+  } catch {
+    // sentinel 缺失/损坏/不可解析：一律不视为我们的 staging（宁可漏清不可误删）
+  }
+  return null;
+}
+
+async function sweepStaleStaging(parentDir, basename) {
+  const pattern = stagingNamePattern(basename);
+  let entries;
+  try {
+    entries = await readdir(parentDir);
+  } catch (error) {
+    if (error.code === "ENOENT") return;
+    throw error;
+  }
+  for (const name of entries) {
+    if (!pattern.test(name)) continue;
+    const candidate = path.join(parentDir, name);
+    try {
+      if (!(await lstat(candidate)).isDirectory()) continue;
+    } catch {
+      continue;
+    }
+    const pid = await readSentinelPid(candidate);
+    if (pid === null) continue;
+    if (pid !== process.pid && isPidAlive(pid)) continue; // 归属进程仍在运行：不动
+    await rm(candidate, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+async function nearestExistingAncestor(target) {
+  let current = path.resolve(target);
+  for (;;) {
+    if (await exists(current)) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return current;
+    current = parent;
+  }
+}
+
+async function rollbackCreatedAncestors(destination, existingAncestor) {
+  let current = path.dirname(destination);
+  while (current !== existingAncestor) {
+    const parent = path.dirname(current);
+    if (parent === current) return;
+    try {
+      await rmdir(current); // 只删空目录：非空或被占用即停止，保留既有内容
+    } catch {
+      return;
+    }
+    current = parent;
+  }
+}
+
+export async function assertOutputOutsideFactory(output) {
+  const destination = path.resolve(output);
+  const insideFactory = (candidate, root) => candidate === root || candidate.startsWith(`${root}${path.sep}`);
+  if (insideFactory(destination, factoryRoot)) {
+    throw new Error("--output 必须位于工厂仓库之外，避免递归复制和误提交生成物");
+  }
+  // 物理防线：最近已存在祖先经 symlink 解析后落入工厂内即拒绝（词法防线可被 symlink 父目录绕过）
+  const existingAncestor = await nearestExistingAncestor(destination);
+  const [realAncestor, realFactory] = await Promise.all([realpath(existingAncestor), realpath(factoryRoot)]);
+  if (insideFactory(realAncestor, realFactory)) {
+    throw new Error("--output 必须位于工厂仓库之外，避免递归复制和误提交生成物");
+  }
+}
+
 export async function createGame({ template, name, slug, output }) {
   if (!TEMPLATES.includes(template)) throw new Error(`未知模板：${template}`);
   const cleanName = name?.trim();
@@ -54,20 +148,24 @@ export async function createGame({ template, name, slug, output }) {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug ?? "")) throw new Error("--slug 必须是小写 kebab-case");
   if (!output) throw new Error("缺少 --output");
 
+  await assertOutputOutsideFactory(output);
   const destination = path.resolve(output);
-  if (destination === factoryRoot || destination.startsWith(`${factoryRoot}${path.sep}`)) {
-    throw new Error("--output 必须位于工厂仓库之外，避免递归复制和误提交生成物");
-  }
   if (await isNonEmpty(destination)) throw new Error(`拒绝覆盖非空目录：${destination}`);
 
   const templateRoot = path.join(factoryRoot, "01_Template_Games", template);
   await access(templateRoot);
-  await mkdir(path.dirname(destination), { recursive: true });
-  const staging = path.join(path.dirname(destination), `.${path.basename(destination)}.factory-${randomUUID()}`);
+  const parentDir = path.dirname(destination);
+  const existingParent = await nearestExistingAncestor(parentDir);
+  await mkdir(parentDir, { recursive: true });
+  await sweepStaleStaging(parentDir, path.basename(destination));
+  const staging = path.join(parentDir, `.${path.basename(destination)}.factory-${randomUUID()}`);
   const destinationExisted = await exists(destination);
 
   try {
     await mkdir(staging, { recursive: true });
+    activeStaging = staging;
+    // sentinel 必须在大拷贝之前首写：SIGKILL 半拷贝态靠它识别为可清扫对象
+    await writeFile(path.join(staging, STAGING_SENTINEL), `${JSON.stringify({ pid: process.pid })}\n`);
     await Promise.all([
       cp(templateRoot, staging, { recursive: true }),
       cp(path.join(factoryRoot, "02_Game_Core"), path.join(staging, "02_Game_Core"), { recursive: true }),
@@ -133,11 +231,19 @@ export async function createGame({ template, name, slug, output }) {
       throw new Error(`生成工程验证失败：\n${validation.stderr || validation.stdout || `exit ${validation.status}`}`);
     }
 
-    if (destinationExisted) await rm(destination, { recursive: true, force: true });
-    await rename(staging, destination);
+    await rm(path.join(staging, STAGING_SENTINEL), { force: true });
+    // 仅允许替换空目录（rmdir 非空即失败）：并发双跑或 TOCTOU 注入时恰好一个赢家，绝不误删内容
+    const occupied = (error) => {
+      throw new Error(`目标目录在生成期间被占用或已非空，已保留其内容：${destination}`, { cause: error });
+    };
+    if (destinationExisted) await rmdir(destination).catch(occupied);
+    await rename(staging, destination).catch(occupied);
   } catch (error) {
     await rm(staging, { recursive: true, force: true });
+    await rollbackCreatedAncestors(destination, existingParent);
     throw error;
+  } finally {
+    if (activeStaging === staging) activeStaging = null;
   }
 
   console.log(`created ${cleanName} (${slug}) from ${template}: ${destination}`);
@@ -145,6 +251,21 @@ export async function createGame({ template, name, slug, output }) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  // 仅 CLI 入口安装信号处理器：SIGINT/SIGTERM 时 best-effort 同步清理当前 staging 后按惯例码退出；
+  // import createGame 的进程不受影响。SIGKILL 不可捕获，靠下次运行的 sentinel 清扫兜底。
+  for (const [signal, exitCode] of [["SIGINT", 130], ["SIGTERM", 143]]) {
+    process.on(signal, () => {
+      const staging = activeStaging;
+      if (staging) {
+        try {
+          rmSync(staging, { recursive: true, force: true });
+        } catch {
+          // best-effort：清不掉留给下次清扫
+        }
+      }
+      process.exit(exitCode);
+    });
+  }
   const args = parseArguments(process.argv.slice(2));
   createGame(args).catch((error) => { console.error(error.message); process.exitCode = 1; });
 }
