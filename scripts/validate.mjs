@@ -52,7 +52,7 @@ for (const file of promptFiles) {
     if (!text.includes(marker)) errors.push(`prompt fixed field missing: ${path.relative(root, file)} -> ${marker}`);
 }
 const promptIndex = await source(path.join(promptRoot, "PROMPT_INDEX.md"));
-for (const file of promptFiles) if (!promptIndex.includes(path.relative(promptRoot, file))) errors.push(`prompt not indexed: ${path.relative(promptRoot, file)}`);
+for (const file of promptFiles) if (!promptIndex.includes(path.relative(promptRoot, file).split(path.sep).join("/"))) errors.push(`prompt not indexed: ${path.relative(promptRoot, file)}`);
 
 const checklistFiles = ["before-start.md", "development.md", "submission.md", "presentation.md"];
 for (const name of checklistFiles) {
