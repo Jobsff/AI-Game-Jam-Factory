@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmod, copyFile, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { closeSync, openSync } from "node:fs";
+import { chmod, copyFile, mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -49,10 +50,21 @@ test("filesUnder reports unreadable directories as structured errors instead of 
     let readable = true;
     try { await chmod(locked, 0o000); await readdir(locked); } catch { readable = false; }
     if (readable) return t.skip("chmod 000 cannot make the directory unreadable in this environment");
-    const result = spawnSync(process.execPath, [path.join(decoy, "scripts", "validate.mjs")], { encoding: "utf8" });
-    assert.equal(result.status, 1, result.stderr || result.stdout);
-    assert.ok(result.stderr.includes("unreadable directory:"), result.stderr);
-    assert.ok(!result.stderr.includes("at async readdir"), result.stderr);
+    // Capture stderr via a file: Node 20's spawnSync truncates piped stderr at 8192 bytes
+    // when the child itself spawns grandchildren (validate.mjs runs `node --check` per file),
+    // which drops the "unreadable directory:" report emitted near the end of a ~16KB stream.
+    const errPath = path.join(decoy, "stderr.txt");
+    const errFd = openSync(errPath, "w");
+    let result;
+    try {
+      result = spawnSync(process.execPath, [path.join(decoy, "scripts", "validate.mjs")], { stdio: ["ignore", "ignore", errFd] });
+    } finally {
+      closeSync(errFd);
+    }
+    const stderr = await readFile(errPath, "utf8");
+    assert.equal(result.status, 1, stderr);
+    assert.ok(stderr.includes("unreadable directory:"), stderr);
+    assert.ok(!stderr.includes("at async readdir"), stderr);
   } finally {
     if (locked) await chmod(locked, 0o755).catch(() => {});
     await rm(decoy, { recursive: true, force: true });

@@ -44,14 +44,22 @@ test("static server handles MIME, HEAD and method restrictions", async () => {
   }
 });
 
-test("static server blocks symlinks that escape the root", async () => {
+test("static server blocks symlinks that escape the root", async (t) => {
   const temporary = await mkdtemp(path.join(os.tmpdir(), "factory-server-"));
   const root = path.join(temporary, "public");
   const outside = path.join(temporary, "secret.txt");
   await import("node:fs/promises").then(({ mkdir }) => mkdir(root));
   await writeFile(path.join(root, "index.html"), "ok");
   await writeFile(outside, "secret");
-  await symlink(outside, path.join(root, "escape.txt"));
+  try {
+    await symlink(outside, path.join(root, "escape.txt"));
+  } catch (error) {
+    if (error?.code === "EPERM" || error?.code === "EACCES") {
+      await rm(temporary, { recursive: true, force: true });
+      return t.skip("symlink creation requires privileges on this platform");
+    }
+    throw error;
+  }
   const service = createStaticServer({ root, port: 0 });
   try {
     const address = await service.listen();
