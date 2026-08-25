@@ -139,8 +139,6 @@ export async function main({
         "--use-gl=angle",
         "--use-angle=swiftshader",
         "--no-sandbox",
-        "--single-process",
-        "--no-zygote",
         "--disable-crashpad",
         "--disable-breakpad",
         "--disable-dev-shm-usage",
