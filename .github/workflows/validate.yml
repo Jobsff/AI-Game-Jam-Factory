@@ -22,7 +22,15 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Unit tests
-        run: npm test
+        shell: bash
+        run: npm test 2>&1 | tee test-output.log
+      - name: Expose unit test failure tail via annotations
+        if: failure()
+        shell: bash
+        run: |
+          tail -n 80 test-output.log | grep -v '^[[:space:]]*$' | head -c 6000 | fold -s -w 480 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
       - name: Repository validation
         run: npm run validate
       - name: Offline smoke
