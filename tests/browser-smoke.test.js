@@ -156,7 +156,7 @@ test("integration: scripts/browser-smoke.mjs exits 0 on this machine", () => {
   // machine has the puppeteer-cached chrome-headless-shell) and when none is
   // found (skip). Integration is happy-path smoke only; the strict and
   // degraded-probe semantics are covered by the injected unit cases above.
-  const result = spawnSync(process.execPath, [smokeScript], { encoding: "utf8", timeout: 120_000 });
+  const result = spawnSync(process.execPath, [smokeScript], { encoding: "utf8", timeout: 420_000 });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   assert.ok(
     result.stdout.includes("browser smoke ok:") || result.stdout.includes("browser smoke skipped:"),

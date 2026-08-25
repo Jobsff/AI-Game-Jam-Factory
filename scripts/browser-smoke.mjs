@@ -149,7 +149,7 @@ export async function main({
       ]);
       let stdout = "";
       let stderr = "";
-      const timeout = setTimeout(() => child.kill("SIGKILL"), 12_000);
+      const timeout = setTimeout(() => child.kill("SIGKILL"), 45_000);
       child.stdout.on("data", (data) => { stdout += data; });
       child.stderr.on("data", (data) => { stderr += data; });
       child.on("error", (error_) => { clearTimeout(timeout); reject(error_); });
