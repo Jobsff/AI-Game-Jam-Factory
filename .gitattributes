@@ -1,0 +1,3 @@
+# Checkout must be byte-exact: scripts/validate.mjs pins vendor/phaser.min.js by SHA-256,
+# and any line-ending conversion (Windows autocrlf) breaks that hash and every gate.
+* -text
