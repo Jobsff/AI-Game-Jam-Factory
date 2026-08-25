@@ -47,12 +47,17 @@ test("filesUnder reports unreadable directories as structured errors instead of 
     await copyFile(validateScript, path.join(decoy, "scripts", "validate.mjs"));
     locked = path.join(decoy, "06_GameJam_Checklist");
     await mkdir(locked);
+    // POSIX-only coverage boundary: this case relies on chmod 000 semantics to make the
+    // directory unreadable; on Windows that always fails, so this test always skips there
+    // (known coverage gap, not a silent pass).
     let readable = true;
     try { await chmod(locked, 0o000); await readdir(locked); } catch { readable = false; }
     if (readable) return t.skip("chmod 000 cannot make the directory unreadable in this environment");
-    // Capture stderr via a file: Node 20's spawnSync truncates piped stderr at 8192 bytes
-    // when the child itself spawns grandchildren (validate.mjs runs `node --check` per file),
-    // which drops the "unreadable directory:" report emitted near the end of a ~16KB stream.
+    // Capture stderr via a file redirection: on the GHA macos-20 (Node 20) leg we observed
+    // piped stderr capture in nested processes (validate.mjs itself spawns `node --check`
+    // per file) losing the tail at roughly 8KB, which dropped the "unreadable directory:"
+    // report emitted near the end of a ~16KB stream. Not reproduced on Node 22/24; root
+    // cause unproven — file redirection sidesteps the issue.
     const errPath = path.join(decoy, "stderr.txt");
     const errFd = openSync(errPath, "w");
     let result;

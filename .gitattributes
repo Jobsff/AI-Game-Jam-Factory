@@ -1,3 +1,27 @@
-# Checkout must be byte-exact: scripts/validate.mjs pins vendor/phaser.min.js by SHA-256,
-# and any line-ending conversion (Windows autocrlf) breaks that hash and every gate.
-* -text
+# 行尾规范化策略：
+# - `* text=auto` 让 Git 在入库时自动把文本文件行尾规范为 LF，检出时按平台/配置展开；
+# - 下方按扩展名显式锁定 eol=lf，保证 Windows 检出（含 autocrlf=true 环境）也是 LF，
+#   使 `npm run validate` 的 SHA-256 门禁在三条 CI 腿上字节一致；
+# - vendor/phaser.min.js 例外：按字节原样保存。该文件本身不含换行符，此条属防御性配置
+#   （防止未来误加 -text 之外的转换或文件被重新生成为含 CRLF 的版本）。
+#   历史提交 a601faf 的提交信息把校验失败归因于 CRLF，该因果表述已被字节证据证伪，
+#   真因（PROMPT_INDEX 路径分隔符）记录于 reviews/workflow-trial-02/IMPLEMENTATION_DECISION.md。
+# - 新增文本类扩展名时必须同步补 eol=lf 规则：未被下方规则覆盖的扩展名在
+#   Windows + autocrlf=true 下会被 CRLF 化（text=auto 只规范入库，不锁检出）。
+
+* text=auto
+
+*.js   text eol=lf
+*.mjs  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.html text eol=lf
+*.css  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.sh   text eol=lf
+*.txt  text eol=lf
+*.csv  text eol=lf
+.gitignore text eol=lf
+
+vendor/phaser.min.js -text

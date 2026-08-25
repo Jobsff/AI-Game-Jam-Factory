@@ -24,14 +24,37 @@ jobs:
       - name: Unit tests
         shell: bash
         run: npm test 2>&1 | tee test-output.log
-      - name: Expose unit test failure tail via annotations
+      - name: Expose unit test failure via annotation
         if: failure()
-        shell: bash
-        run: |
-          awk '/^not ok/{print; next} /error: \|-/{p=1; print; next} /^  stack:/{p=0} p{print}' test-output.log | head -c 4500 | fold -s -w 480 | while IFS= read -r line; do
-            echo "::error::${line}"
-          done
+        run: echo "::error::Unit tests failed — see job log for assertion details"
       - name: Repository validation
         run: npm run validate
       - name: Offline smoke
         run: npm run smoke
+
+  browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Browser smoke (strict)
+        env:
+          REQUIRE_BROWSER: '1'
+        run: npm run browser-smoke
+
+  quality-gates-complete:
+    needs: [quality-gates, browser-smoke]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Assert every required gate succeeded
+        run: |
+          if [ "${{ needs.quality-gates.result }}" != "success" ] || [ "${{ needs.browser-smoke.result }}" != "success" ]; then
+            echo "::error::quality-gates=${{ needs.quality-gates.result }} browser-smoke=${{ needs.browser-smoke.result }}"
+            exit 1
+          fi
+          echo "all quality gates complete: quality-gates=success browser-smoke=success"
