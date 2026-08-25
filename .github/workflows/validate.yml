@@ -26,7 +26,11 @@ jobs:
         run: npm test 2>&1 | tee test-output.log
       - name: Expose unit test failure via annotation
         if: failure()
-        run: echo "::error::Unit tests failed — see job log for assertion details"
+        shell: bash
+        run: |
+          awk '/✖|not ok/{print; next} /error: \|-/{p=1; print; next} /^  stack:/{p=0} p{print}' test-output.log | head -c 4500 | fold -s -w 480 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
       - name: Repository validation
         run: npm run validate
       - name: Offline smoke
@@ -43,7 +47,15 @@ jobs:
       - name: Browser smoke (strict)
         env:
           REQUIRE_BROWSER: '1'
-        run: npm run browser-smoke
+        shell: bash
+        run: npm run browser-smoke 2>&1 | tee browser-output.log
+      - name: Expose browser failure via annotation
+        if: failure()
+        shell: bash
+        run: |
+          cat browser-output.log | tail -c 4500 | fold -s -w 480 | while IFS= read -r line; do
+            echo "::error::${line}"
+          done
 
   quality-gates-complete:
     needs: [quality-gates, browser-smoke]
