@@ -28,7 +28,10 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          awk '/^not ok/{f=1} f{print; n++} n>70{exit}' test-output.log | head -c 6000 | fold -s -w 480 | while IFS= read -r line; do
+          grep -n "not ok\|✖\|AssertionError\|error:" test-output.log | head -5 > /tmp/failpos.txt || true
+          POS=$(head -1 /tmp/failpos.txt | cut -d: -f1)
+          START=${POS:-1}
+          sed -n "${START},$((START+90))p" test-output.log | head -c 6000 | fold -s -w 480 | while IFS= read -r line; do
             echo "::error::${line}"
           done
       - name: Repository validation
