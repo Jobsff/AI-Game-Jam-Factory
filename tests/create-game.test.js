@@ -262,6 +262,8 @@ test("late thread-pool write landing after signal cleanup is swept by bounded re
           injected = true; // 仅首次注入
           fs.mkdirSync(String(target), { recursive: true });
           fs.writeFileSync(path.join(String(target), "stray-late-write.txt"), "late");
+          // 同步写标记：测试据此区分"注入没跑"（钩子在本平台失效）与"清理失败"（残留真实存在）
+          fs.writeFileSync(path.join(path.dirname(String(target)), "INJECTED.marker"), "late-write hook fired");
         }
         return result;
       };
@@ -275,7 +277,20 @@ test("late thread-pool write landing after signal cleanup is swept by bounded re
     const exit = await Promise.race([done, sleep(60_000).then(() => null)]);
     assert.ok(exit, "process did not exit after SIGINT");
     assert.equal(exit.status, 130, `status=${exit.status} signal=${exit.signal}`);
-    assert.equal(await stagingCount(temporary, "sigint-late"), 0, "stray write landing after cleanup must be re-swept, not leaked");
+    assert.ok(existsSync(path.join(temporary, "INJECTED.marker")), "injection never ran — hook ineffective on this platform");
+    let residueDetail = "";
+    const residue = await stagingCount(temporary, "sigint-late");
+    if (residue > 0) {
+      const leftovers = [];
+      for (const name of await readdir(temporary)) {
+        if (!name.includes(".factory-")) continue;
+        let inner = ["<unreadable>"];
+        try { inner = await readdir(path.join(temporary, name)); } catch {}
+        leftovers.push({ dir: name, entries: inner, stray: inner.includes("stray-late-write.txt"), sentinel: inner.includes(".factory-staging.json") });
+      }
+      residueDetail = ` residue entries: ${JSON.stringify(leftovers)} childStderr: ${JSON.stringify((exit.stderr ?? "").slice(-500))}`;
+    }
+    assert.equal(residue, 0, `stray write landing after cleanup must be re-swept, not leaked${residueDetail}`);
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }

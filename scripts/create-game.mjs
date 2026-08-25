@@ -263,12 +263,18 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
         try {
           rmSync(staging, { recursive: true, force: true });
           // rmSync 遍历完成后、exit 前仍可能有已派发的线程池写落地（CI 慢盘大文件）成为残留：
-          // 有界等待让在飞写落盘后再删一次（Atomics.wait 同步阻塞、不跑事件循环）；
-          // 重试耗尽则放行退出：此残骸已无 sentinel（首删已连 sentinel 一并删除），清扫器按设计
-          // 跳过无 sentinel 目录、不会回收，需人工清理。
-          for (let attempt = 0; attempt < 8 && existsSync(staging); attempt++) {
-            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+          // 有界等待让在飞写落盘后再删一次（Atomics.wait 同步阻塞、不跑事件循环）。
+          for (let attempt = 0; attempt < 20 && existsSync(staging); attempt++) {
+            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
             rmSync(staging, { recursive: true, force: true });
+          }
+          // 封最后一隙：重试循环最后一次删除与 process.exit 之间（或 existsSync 判 false 与 exit
+          // 之间）落地的写无人兜底——共享 runner 主线程在两条语句间被抢占即可命中，故无条件补删一次。
+          rmSync(staging, { recursive: true, force: true });
+          if (existsSync(staging)) {
+            // 警告行给 CI 日志定位残留：此残骸已无 sentinel（首删已连 sentinel 一并删除），清扫器
+            // 按设计跳过无 sentinel 目录、不会回收，需人工清理。
+            process.stderr.write(`warning: staging 清理未完成，可能残留：${staging}\n`);
           }
         } catch {
           // best-effort：清不掉留给下次清扫
