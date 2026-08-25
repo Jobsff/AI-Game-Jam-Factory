@@ -102,3 +102,41 @@
 4. 浏览器操作一律走 ego-browser skill；遇 "user is controlling" 立即硬停（本轮纪律延续）。
 5. 建议沿用：阶段 0 checkpoint、防锚定任务包、每批次 ≤3 文件、放弃机制上限（代码修复 ≤2、CI 周期 ≤3）、派发标记 marker。
 6. Trial 03 核心验收草案（供下轮任务包用）：5 模板浏览器连续重开 N 轮无状态残留、事件监听/timer/tween 清理验证、内存/GC 趋势记录、生成→serve→validate 全链闭环。
+
+---
+
+# 附录：CI 修复周期（终审后追加，2026-08-26 04:0x–04:2x）
+
+> Playbook 硬规则执行记录：终审 Go 后推送 a311375 → CI 周期 1 的 ubuntu-22 腿失败 → 按放弃机制（CI 周期 1/3）根因分析 + G53 修复 + KK3 增量复核 → 本附录与修复同批提交。
+
+## CI 周期 1 结果（a311375）
+
+10/11 绿（Windows 三腿全绿——新增测试跨平台成立）；`quality-gates (ubuntu-latest, 22)` 失败：`not ok 15 - SIGINT during generation cleans staging and exits 130`，残留断言 `1 !== 0`（exit 130 断言通过）→ 聚合 job 红。
+
+## 根因（裁判确定性复现，/tmp/agjf-sigstress/prereg4.cjs，3/3）
+
+**注册窗口**：`await mkdir(staging)` 系统调用完成（目录已落盘、测试 15ms 轮询可观测）到 `activeStaging = staging` 赋值之间，await 微任务续体被共享 runner 调度抢占（可拉长 >15ms）时 SIGINT 到达 → 处理器读到 null → 不清理直接 exit 130 → 残留。本地快盘 25 轮自然压不中；确定性钩子复现（mkdir 完成后 keepAlive+自发 SIGINT+永驻）3/3 与 CI 失败签名完全一致（exit 130 + residue 1）。
+**次要窗口（防御性）**：处理器 rmSync 遍历完成后、exit 前已派发线程池写落地（CI 慢盘大文件）。
+排查路径：假设 A（rmSync 后阻塞 120ms 观察迟写）实验证伪 → 换角度定位注册窗口 → 确定性复现。
+
+## 修复（G53 agent_2d12bf1b，白名单 2 文件，先红后绿）
+
+- `scripts/create-game.mjs`（+12 行）：①`activeStaging = staging` 赋值前移到 `await mkdir` 之前（rmSync force 对不存在路径无副作用，窗口彻底关闭）；②信号处理器 rmSync 后加 8×25ms 有界重试（Atomics.wait 同步等待，兜住迟写；仅信号路径，正常路径零变化）。
+- `tests/create-game.test.js`（+79 行）：T-A 注册窗口钩子测试、T-B 迟写窗口钩子测试，均确定性结构（强制构造交错，不碰运气），win32 skip；修复前 2 fail（红，签名与 CI 一致）→ 修复后绿。
+- K3-1 注释修正（KK3 预授权）：重试耗尽残骸无 sentinel、清扫器不回收的如实表述。
+
+## KK3 增量复核（agent_83f2d8ac）：Go
+
+增量与目标严格一致（+91/−2 无夹带）、注册窗口彻底关闭、Atomics.wait 主线程用法正确、钩子误伤排查（validate-game.mjs 无 rmSync/mkdir）通过、独立复跑 10/10 + 45/45、复现脚本 2/2 镜像验证。新发现 P3×2：K3-1（已修正）、K3-2（注册前移后 mkdir 落地前的微秒级残余窗口，接受：概率极低且为空目录）。增量截止点哈希：create-game.mjs 1beaa073…（K3-1 注释修正后以 git diff 为准）、create-game.test.js 27ba12ce…。
+
+## 本地全门槛（修复后）
+
+`npm test` 45/45 / 0 skipped；`npm run verify` exit 0；prereg4 复现 3/3 残留归零；stress 10/10 无泄漏；仓库无 `*.factory-*`。
+
+## 计分卡增量
+
+- 返修次数 1 → 2（F1 + CI 竞态；均为单次通过）
+- 总耗时 约 2h05m → 约 2h45m（含 CI 周期 1 排查与修复）
+- 有效发现数 19 → 21（+CI 竞态窗口、+K3-2 微秒残余窗口）
+- 角色评分调整：G53 28→29（CI 修复单次闭环）；KK3 28→29（增量复核独立发现 K3-1/K3-2）；MM3 不变（未参与本轮，按 Playbook 阶段 5 只在 P0/P1/稳定 P2 时回归，CI 修复走 KK3 增量复核路径）
+- CI 周期消耗：1/3（周期 2 为本修复的验证）

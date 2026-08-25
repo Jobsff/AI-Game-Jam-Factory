@@ -34,7 +34,13 @@
       "inputHash": "8cce0226b32d816439b4e2a10c4e57c66cb37d59b51d621a1a4933b7335a0e89",
       "inputTask": "/tmp/agjf-trial02p2-evidence/g53-task.md（三批次白名单 + 验收 + 硬约束）",
       "output": "G1/G2/G3/G4+G9/G8/G5/G6 全修 + U-03；红绿日志与报告见 reviews/workflow-trial-02-phase2/G53_IMPLEMENTATION_REPORT.md",
-      "modifiedFiles": ["scripts/create-game.mjs", "tests/create-game.test.js", "scripts/serve.mjs", "tests/serve.test.js", "README.md"],
+      "modifiedFiles": [
+        "scripts/create-game.mjs",
+        "tests/create-game.test.js",
+        "scripts/serve.mjs",
+        "tests/serve.test.js",
+        "README.md"
+      ],
       "toolUses": 62,
       "durationMs": 1309409,
       "status": "completed"
@@ -64,7 +70,10 @@
       "inputHash": "rework-task-in-prompt（F1：serve 非法 PORT 单行报错，白名单 2 文件）",
       "inputTask": "F1 返修：scripts/serve.mjs CLI 入口 try/catch + tests/serve.test.js +1 用例，先红后绿",
       "output": "F1 Fixed；红 g53-rework-red.log（12 行栈）→ 绿 g53-rework-green.log（6/6）→ npm test 43/43；报告见 G53_IMPLEMENTATION_REPORT.md 附录",
-      "modifiedFiles": ["scripts/serve.mjs", "tests/serve.test.js"],
+      "modifiedFiles": [
+        "scripts/serve.mjs",
+        "tests/serve.test.js"
+      ],
       "toolUses": 18,
       "durationMs": 224969,
       "status": "completed"
@@ -97,6 +106,39 @@
       "modifiedFiles": [],
       "toolUses": 34,
       "durationMs": 744899,
+      "status": "completed"
+    },
+    {
+      "agent": "G53",
+      "role": "ci-fix",
+      "agentId": "agent_2d12bf1b-87a1-470e-9114-ca83b2065799",
+      "model": "g53 (ZCode subagent)",
+      "startedAt": "2026-08-25T19:55:20Z",
+      "finishedAt": "2026-08-25T20:04:16Z",
+      "inputHash": "cifix-task-in-prompt（ubuntu-22 SIGINT 注册窗口 + 迟写窗口，白名单 2 文件）",
+      "inputTask": "CI 周期 1 修复：activeStaging 注册前移到 mkdir 之前 + 处理器 8×25ms 有界重试 + T-A/T-B 确定性回归测试",
+      "output": "修复 + 两测试红→绿；npm test 45/45 + verify exit 0；prereg4 复现 3/3 残留归零；追加 K3-1 注释修正（预授权）",
+      "modifiedFiles": [
+        "scripts/create-game.mjs",
+        "tests/create-game.test.js"
+      ],
+      "toolUses": 24,
+      "durationMs": 634662,
+      "status": "completed"
+    },
+    {
+      "agent": "KK3",
+      "role": "delta-review",
+      "agentId": "agent_83f2d8ac-52d0-446d-9bb1-35bbc00c2432",
+      "model": "kk3 (ZCode subagent)",
+      "startedAt": "2026-08-25T20:05:50Z",
+      "finishedAt": "2026-08-25T20:17:23Z",
+      "inputHash": "delta-review-task-in-prompt（增量 diff 复核 + 根因链条 sanity check）",
+      "inputTask": "阶段 6 终审后生产写入的强制增量复核（Playbook 硬规则）",
+      "output": "Go：增量与目标严格一致（+91/-2 无夹带）、注册窗口彻底关闭、有界重试仅信号路径、独立复跑 10/10 + 45/45、复现 2/2 镜像验证；新发现 P3×2（K3-1 注释过度承诺[已授权修正]、K3-2 微秒残余窗口[接受]）",
+      "modifiedFiles": [],
+      "toolUses": 20,
+      "durationMs": 694876,
       "status": "completed"
     }
   ]

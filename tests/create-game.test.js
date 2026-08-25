@@ -202,6 +202,85 @@ test("SIGINT during generation cleans staging and exits 130", async (t) => {
   }
 });
 
+test("SIGINT landing between staging mkdir completion and registration still cleans staging", async (t) => {
+  if (process.platform === "win32") {
+    return t.skip("POSIX-only coverage boundary: signals are not reliably deliverable on Windows");
+  }
+  const temporary = await mkdtemp(path.join(os.tmpdir(), "factory-create-sigint-reg-"));
+  try {
+    const destination = path.join(temporary, "sigint-reg");
+    // Registration-window hook: the staging mkdir succeeds on disk, then the await continuation is
+    // "preempted forever" (never-resolving promise, event loop kept alive by the interval) while
+    // SIGINT arrives. The signal handler must not observe an unregistered staging directory.
+    const hook = path.join(temporary, "preempt.cjs");
+    await writeFile(hook, `
+      const fsp = require("node:fs/promises");
+      const orig = fsp.mkdir.bind(fsp);
+      fsp.mkdir = async function (target, options) {
+        const result = await orig(target, options);
+        if (String(target).includes(".factory-")) {
+          const keepAlive = setInterval(() => {}, 5); // 在飞 handle：事件循环活着，信号可送达
+          process.kill(process.pid, "SIGINT");
+          await new Promise(() => {}); // 模拟 await 续体被抢占后永驻
+          void keepAlive;
+        }
+        return result;
+      };
+    `);
+    const child = spawnCreateGame({ name: "Preempted", slug: "preempted", output: destination }, {
+      ...process.env, NODE_OPTIONS: `--require ${hook}`,
+    });
+    const done = collectOutput(child);
+    const exit = await Promise.race([done, sleep(60_000).then(() => null)]);
+    assert.ok(exit, "process did not exit after SIGINT");
+    assert.equal(exit.status, 130, `status=${exit.status} signal=${exit.signal}`);
+    assert.equal(await stagingCount(temporary, "sigint-reg"), 0, "staging visible on disk before registration must still be cleaned");
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test("late thread-pool write landing after signal cleanup is swept by bounded retry", async (t) => {
+  if (process.platform === "win32") {
+    return t.skip("POSIX-only coverage boundary: signals are not reliably deliverable on Windows");
+  }
+  const temporary = await mkdtemp(path.join(os.tmpdir(), "factory-create-sigint-late-"));
+  try {
+    const destination = path.join(temporary, "sigint-late");
+    // Late-write hook: the first rmSync targeting staging completes, then an already-dispatched
+    // thread-pool write "lands" (the stray file re-creates the directory) before returning.
+    // The handler's bounded re-check must remove the residue instead of exiting on top of it.
+    const hook = path.join(temporary, "latewrite.cjs");
+    await writeFile(hook, `
+      const fs = require("node:fs");
+      const path = require("node:path");
+      const orig = fs.rmSync.bind(fs);
+      let injected = false;
+      fs.rmSync = function (target, options) {
+        const result = orig(target, options);
+        if (!injected && String(target).includes(".factory-")) {
+          injected = true; // 仅首次注入
+          fs.mkdirSync(String(target), { recursive: true });
+          fs.writeFileSync(path.join(String(target), "stray-late-write.txt"), "late");
+        }
+        return result;
+      };
+    `);
+    const child = spawnCreateGame({ name: "Late", slug: "late", output: destination }, {
+      ...process.env, NODE_OPTIONS: `--require ${hook}`,
+    });
+    const done = collectOutput(child);
+    assert.ok(await until(() => stagingCount(temporary, "sigint-late").then((count) => count >= 1)), "generation never started staging");
+    child.kill("SIGINT");
+    const exit = await Promise.race([done, sleep(60_000).then(() => null)]);
+    assert.ok(exit, "process did not exit after SIGINT");
+    assert.equal(exit.status, 130, `status=${exit.status} signal=${exit.signal}`);
+    assert.equal(await stagingCount(temporary, "sigint-late"), 0, "stray write landing after cleanup must be re-swept, not leaked");
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
 test("stale staging sweep removes only sentinel-marked leftovers of dead processes", async () => {
   const temporary = await mkdtemp(path.join(os.tmpdir(), "factory-create-sweep-"));
   try {

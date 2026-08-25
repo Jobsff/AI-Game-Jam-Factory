@@ -1,5 +1,5 @@
 import { access, cp, lstat, mkdir, readFile, readdir, realpath, rename, rm, rmdir, writeFile } from "node:fs/promises";
-import { rmSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -162,8 +162,11 @@ export async function createGame({ template, name, slug, output }) {
   const destinationExisted = await exists(destination);
 
   try {
-    await mkdir(staging, { recursive: true });
+    // 注册必须先于目录创建：mkdir 完成到赋值之间 await 续体若被抢占（共享 CI runner 可拉长到 >15ms），
+    // 此时信号到达会读到 activeStaging === null 而漏清磁盘上已可见的 staging。
+    // rmSync force 对不存在的路径无副作用，提前注册零成本。
     activeStaging = staging;
+    await mkdir(staging, { recursive: true });
     // sentinel 必须在大拷贝之前首写：SIGKILL 半拷贝态靠它识别为可清扫对象
     await writeFile(path.join(staging, STAGING_SENTINEL), `${JSON.stringify({ pid: process.pid })}\n`);
     await Promise.all([
@@ -259,6 +262,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       if (staging) {
         try {
           rmSync(staging, { recursive: true, force: true });
+          // rmSync 遍历完成后、exit 前仍可能有已派发的线程池写落地（CI 慢盘大文件）成为残留：
+          // 有界等待让在飞写落盘后再删一次（Atomics.wait 同步阻塞、不跑事件循环）；
+          // 重试耗尽则放行退出：此残骸已无 sentinel（首删已连 sentinel 一并删除），清扫器按设计
+          // 跳过无 sentinel 目录、不会回收，需人工清理。
+          for (let attempt = 0; attempt < 8 && existsSync(staging); attempt++) {
+            Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+            rmSync(staging, { recursive: true, force: true });
+          }
         } catch {
           // best-effort：清不掉留给下次清扫
         }
