@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "name": "{{GAME_NAME}}",
+  "color": { "background": "{{HEX}}", "surface": "{{HEX}}", "text": "{{HEX}}", "mutedText": "{{HEX}}", "accent": "{{HEX}}", "success": "{{HEX}}", "danger": "{{HEX}}", "focus": "{{HEX}}" },
+  "type": { "family": "{{FONT_STACK}}", "bodyPx": "{{BODY_PX}}", "labelPx": "{{LABEL_PX}}", "titlePx": "{{TITLE_PX}}", "lineHeight": "{{LINE_HEIGHT}}" },
+  "spacePx": { "xs": "{{XS}}", "sm": "{{SM}}", "md": "{{MD}}", "lg": "{{LG}}", "xl": "{{XL}}" },
+  "radiusPx": { "button": "{{BUTTON_RADIUS}}", "panel": "{{PANEL_RADIUS}}" },
+  "strokePx": { "default": "{{STROKE}}", "focus": "{{FOCUS_STROKE}}" },
+  "touchTargetMinCssPx": 44,
+  "motionMs": { "feedback": "{{FEEDBACK_MS}}", "transition": "{{TRANSITION_MS}}" },
+  "safeArea": "{{SAFE_AREA_RULE}}"
+}

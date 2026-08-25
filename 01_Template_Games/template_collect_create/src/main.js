@@ -1,4 +1,8 @@
 import config from "./config.js";
 
-// 只负责启动游戏，不写玩法
-new Phaser.Game(config);
+try {
+  if (!globalThis.Phaser) throw new Error("Phaser 未加载");
+  globalThis.__FACTORY_GAME__ = new Phaser.Game(config);
+} catch (error) {
+  globalThis.dispatchEvent(new ErrorEvent("error", { error, message: error.message }));
+}

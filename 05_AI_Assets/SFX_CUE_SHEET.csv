@@ -1,0 +1,2 @@
+cue_id,type,event,file,trigger,stop_rule,volume,loop,owner,status
+{{CUE_ID}},{{bgm|sfx}},{{EVENT_NAME}},{{RELATIVE_FILE}},{{TRIGGER_CONDITION}},{{STOP_OR_FADE_RULE}},{{0_TO_1}},{{true|false}},{{MODULE_OWNER}},{{planned|ready|integrated|verified}}

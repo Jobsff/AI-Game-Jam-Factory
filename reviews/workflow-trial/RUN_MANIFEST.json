@@ -1,0 +1,98 @@
+{
+  "trial": "Workflow Trial 01 — CLI Root Resolution Smoke Test",
+  "result": "PASS WITH PROCESS NOTES",
+  "date": "2026-08-25",
+  "repo": "/Users/jobsff/code/ai-game-jam-factory",
+  "headAtStart": "b639cf768dbc8d874f8f509363d9e591fb67913a",
+  "note": "回溯补录：本清单在 Trial 01 结束后依据会话记录重建。标注'未记录'的字段当时未采集，属流程缺口，已在 Playbook 中固化为下轮硬要求。",
+  "baseline": {
+    "gitEvidence": "/tmp/agjf-workflow-trial-20260825-134327",
+    "contentSnapshot": {
+      "path": "/tmp/ai-game-jam-factory-checkpoint",
+      "sha256Manifest": "/tmp/ai-game-jam-factory-checkpoint.sha256",
+      "fileCount": 199,
+      "note": "内容级快照在 Trial 01 结束后补建（含本轮改动）；Trial 01 期间 untracked 文件仅有 git status 级保护，无修改前内容副本"
+    }
+  },
+  "runs": [
+    {
+      "agent": "KK3",
+      "role": "initial-review",
+      "agentId": "agent_2e68426d-3c0a-451f-b48b-31b9d49d46a2",
+      "model": "k3",
+      "inputTask": "scripts/validate.mjs cwd 依赖架构审查（任务包含疑似根因提示，独立性受限）",
+      "output": "reviews/workflow-trial/KK3_INITIAL_REVIEW.md",
+      "modifiedFiles": [],
+      "toolUses": 31,
+      "durationMs": 534361,
+      "startedAt": "未记录",
+      "inputHash": "未记录",
+      "status": "completed"
+    },
+    {
+      "agent": "G53",
+      "role": "implementation",
+      "agentId": "agent_6f81758a-1fc8-4d12-80d6-0add000a0f70",
+      "model": "GLM-5.3",
+      "inputTask": "validate.mjs:8 root 解析修复 + 新增 tests/validate-cli.test.js（先红后绿）",
+      "output": "reviews/workflow-trial/G53_IMPLEMENTATION_REPORT.md",
+      "modifiedFiles": ["scripts/validate.mjs", "tests/validate-cli.test.js"],
+      "toolUses": 24,
+      "durationMs": 268929,
+      "startedAt": "未记录",
+      "inputHash": "未记录",
+      "status": "completed"
+    },
+    {
+      "agent": "MM3",
+      "role": "red-team",
+      "agentId": "agent_5787c536-02bd-429c-8560-c8513fb9aa86",
+      "model": "MiniMax-M3",
+      "inputTask": "对修复做 12 项攻击面对抗验证（攻击清单由主智能体指定，自行发现攻击未要求）",
+      "output": "reviews/workflow-trial/MM3_RED_TEAM_REPORT.md",
+      "modifiedFiles": [],
+      "toolUses": 57,
+      "durationMs": 350106,
+      "startedAt": "未记录",
+      "inputHash": "未记录",
+      "status": "completed",
+      "findings": { "P0": 0, "P1": 0, "P2": 0, "P3": 3 }
+    },
+    {
+      "agent": "KK3",
+      "role": "final-review",
+      "agentId": "agent_ad0e2810-28ff-4d56-a217-bb1722348033",
+      "model": "k3",
+      "inputTask": "最终一致性复核（diff 截止点：README 修改之前）",
+      "output": "reviews/workflow-trial/KK3_FINAL_REVIEW.md",
+      "modifiedFiles": [],
+      "toolUses": 18,
+      "durationMs": 438480,
+      "startedAt": "未记录",
+      "inputHash": "未记录",
+      "status": "completed",
+      "note": "复核后主智能体又授权 G53 修改了 README 一句——复核未覆盖最终状态，属流程缺口"
+    },
+    {
+      "agent": "G53",
+      "role": "doc-sync",
+      "agentId": "agent_6f81758a-1fc8-4d12-80d6-0add000a0f70（后台恢复）",
+      "model": "GLM-5.3",
+      "inputTask": "README.md 第 52 行段末追加一句 validate.mjs 根解析说明",
+      "output": "会话内报告（未落盘为独立文件）",
+      "modifiedFiles": ["README.md"],
+      "toolUses": 6,
+      "durationMs": 62527,
+      "startedAt": "未记录",
+      "inputHash": "未记录",
+      "status": "completed"
+    }
+  ],
+  "knownGaps": [
+    "KK3 初审的任务包含疑似根因提示，发现独立性受限",
+    "MM3 攻击清单由主智能体强引导，未要求自行发现攻击面",
+    "KK3 最终复核发生在最后一次写入（README 单句）之前",
+    "untracked 文件在 Trial 01 期间无修改前内容快照",
+    "无输入任务包哈希、精确起止时间"
+  ]
+}

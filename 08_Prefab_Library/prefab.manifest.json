@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "prefabs": [
+    {
+      "id": "click",
+      "layer": "mechanic",
+      "entry": "./mechanic-prefabs/click/Clickable.js",
+      "dependencies": [
+        "EventBus",
+        "Phaser input/game object（浏览器运行时）"
+      ],
+      "events": [
+        "click:clicked"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "drag",
+      "layer": "mechanic",
+      "entry": "./mechanic-prefabs/drag/Draggable.js",
+      "dependencies": [
+        "EventBus",
+        "LifecycleBag",
+        "Phaser input/game object（浏览器运行时）"
+      ],
+      "events": [
+        "drag:started",
+        "drag:moved",
+        "drag:ended"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "merge",
+      "layer": "mechanic",
+      "entry": "./mechanic-prefabs/merge/Merge.js",
+      "dependencies": [
+        "EventBus"
+      ],
+      "events": [
+        "merge:succeeded",
+        "merge:failed"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "timer",
+      "layer": "mechanic",
+      "entry": "./mechanic-prefabs/timer/CountdownTimer.js",
+      "dependencies": [
+        "EventBus",
+        "setInterval/clearInterval"
+      ],
+      "events": [
+        "timer:ticked",
+        "timer:ended",
+        "timer:state-changed"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "spawn",
+      "layer": "mechanic",
+      "entry": "./mechanic-prefabs/spawn/Spawner.js",
+      "dependencies": [
+        "EventBus",
+        "setInterval/clearInterval"
+      ],
+      "events": [
+        "spawn:spawned",
+        "spawn:limit-reached"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "score",
+      "layer": "system",
+      "entry": "./system-prefabs/score/ScoreSystem.js",
+      "dependencies": [
+        "EventBus"
+      ],
+      "events": [
+        "score:changed",
+        "score:reset"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "health",
+      "layer": "system",
+      "entry": "./system-prefabs/health/HealthSystem.js",
+      "dependencies": [
+        "EventBus"
+      ],
+      "events": [
+        "health:changed",
+        "health:depleted",
+        "health:reset"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "state-machine",
+      "layer": "system",
+      "entry": "./system-prefabs/state-machine/StateMachine.js",
+      "dependencies": [
+        "EventBus"
+      ],
+      "events": [
+        "state-machine:changed",
+        "state-machine:reset"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "button",
+      "layer": "presentation",
+      "entry": "./presentation-prefabs/button/UIButton.js",
+      "dependencies": [
+        "EventBus",
+        "LifecycleBag",
+        "Phaser Scene"
+      ],
+      "events": [
+        "button:clicked"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "popup",
+      "layer": "presentation",
+      "entry": "./presentation-prefabs/popup/Popup.js",
+      "dependencies": [
+        "EventBus",
+        "LifecycleBag",
+        "Phaser Scene"
+      ],
+      "events": [
+        "popup:opened",
+        "popup:closed",
+        "popup:action"
+      ],
+      "status": "verified"
+    },
+    {
+      "id": "dialog",
+      "layer": "presentation",
+      "entry": "./presentation-prefabs/dialog/DialogBox.js",
+      "dependencies": [
+        "EventBus",
+        "LifecycleBag",
+        "Phaser Scene/time/input"
+      ],
+      "events": [
+        "dialog:line-started",
+        "dialog:line-completed",
+        "dialog:completed"
+      ],
+      "status": "verified"
+    }
+  ]
+}

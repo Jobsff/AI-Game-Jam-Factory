@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "assets": [
+    {
+      "id": "{{ASSET_ID}}",
+      "source": "{{SOURCE_OR_GENERATOR}}",
+      "license": "{{LICENSE_OR_PENDING_VERIFICATION}}",
+      "file": "{{RELATIVE_FILE_PATH}}",
+      "frameWidth": "{{FRAME_WIDTH_PX}}",
+      "frameHeight": "{{FRAME_HEIGHT_PX}}",
+      "columns": "{{COLUMNS}}",
+      "rows": "{{ROWS}}",
+      "anchor": { "x": "{{ANCHOR_X_0_TO_1}}", "y": "{{ANCHOR_Y_0_TO_1}}" },
+      "animations": [{ "id": "{{ANIMATION_ID}}", "frames": ["{{FRAME_INDEXES}}"], "fps": "{{FPS}}", "loop": "{{TRUE_OR_FALSE}}" }],
+      "status": "{{planned|generated|reviewed|integrated}}"
+    }
+  ]
+}

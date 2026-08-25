@@ -1,139 +1,61 @@
-import { EventBus } from "../../../02_Game_Core/core/EventBus.js";
+import sharedEventBus from "../../../02_Game_Core/core/EventBus.js";
 
-const MERGE_SUCCESS = "MERGE_SUCCESS";
-const MERGE_FAIL = "MERGE_FAIL";
-const ITEM_KEY_FIELDS = ["mergeKey", "id", "key", "itemId", "type"];
+export const MERGE_EVENTS = Object.freeze({ SUCCEEDED: "merge:succeeded", FAILED: "merge:failed" });
+const KEY_FIELDS = ["mergeKey", "id", "key", "itemId", "type"];
 
-/**
- * 两个物体的合成机制预制件。
- * 只负责匹配合并规则、创建结果对象并发送事件。
- */
 export class Merger {
-  constructor(scene, config = {}) {
-    this.scene = scene;
-    this.rules = config.rules instanceof Map ? config.rules : new Map();
+  constructor(config = {}) {
+    this.eventBus = config.eventBus ?? sharedEventBus;
+    this.rules = config.rules ?? new Map();
+    this.createResult = config.createResult ?? ((result, inputs) => ({ key: result, inputs }));
+    if (!(this.rules instanceof Map) && (typeof this.rules !== "object" || this.rules === null || Array.isArray(this.rules))) throw new TypeError("rules must be a Map or object");
+    if (typeof this.createResult !== "function") throw new TypeError("createResult must be a function");
+    this.enabled = true;
+    this.destroyed = false;
   }
 
-  /**
-   * 尝试合并两个对象或对象 ID。
-   * @returns {boolean} 合并成功返回 true，失败返回 false。
-   */
   merge(itemA, itemB) {
-    const keyA = this._getItemKey(itemA);
-    const keyB = this._getItemKey(itemB);
-
-    if (keyA === undefined || keyB === undefined) {
-      return this._emitFailure("INVALID_ITEM");
-    }
-
-    const rule = this._findRule(keyA, keyB);
-    if (!rule.found) {
-      return this._emitFailure("NO_MATCHING_RULE");
-    }
-
-    const mergedItem = this._createMergedItem(rule.resultKey);
-    EventBus.emit(MERGE_SUCCESS, mergedItem);
-    return true;
+    this.#assertAlive();
+    const keys = [this.#keyOf(itemA), this.#keyOf(itemB)];
+    if (!this.enabled) return this.#fail("DISABLED", keys, [itemA, itemB]);
+    if (keys.some((key) => key === undefined)) return this.#fail("INVALID_ITEM", keys, [itemA, itemB]);
+    const match = this.#find(keys[0], keys[1]);
+    if (!match.found) return this.#fail("NO_MATCHING_RULE", keys, [itemA, itemB]);
+    const result = this.createResult(match.result, [itemA, itemB]);
+    if (result === undefined) throw new Error("createResult must return a result");
+    const payload = { ok: true, keys, items: [itemA, itemB], rule: match.rule, result };
+    this.eventBus.emit(MERGE_EVENTS.SUCCEEDED, payload);
+    return payload;
   }
 
-  // 对象可通过常见标识字段提供合并键；原始值直接作为对象 ID 使用。
-  _getItemKey(item) {
-    if (item === null || item === undefined) {
-      return undefined;
-    }
-
-    if (typeof item !== "object") {
-      return item;
-    }
-
-    for (const field of ITEM_KEY_FIELDS) {
-      if (item[field] !== null && item[field] !== undefined) {
-        return item[field];
-      }
-    }
-
-    // 兼容以 Phaser 纹理 key 标识物体的常见用法。
-    if (
-      item.texture &&
-      item.texture.key !== null &&
-      item.texture.key !== undefined
-    ) {
-      return item.texture.key;
-    }
-
-    return undefined;
+  #keyOf(item) {
+    if (item === null || item === undefined) return undefined;
+    if (typeof item !== "object") return item;
+    for (const field of KEY_FIELDS) if (item[field] !== undefined && item[field] !== null) return item[field];
+    return item.texture?.key;
   }
 
-  // 优先匹配明确的二元规则，再匹配同类物体的直接映射规则。
-  _findRule(keyA, keyB) {
-    for (const candidate of this._buildPairKeys(keyA, keyB)) {
-      if (this.rules.has(candidate)) {
-        return { found: true, resultKey: this.rules.get(candidate) };
-      }
+  #find(a, b) {
+    const entries = this.rules instanceof Map ? [...this.rules] : Object.entries(this.rules);
+    for (const [rule, result] of entries) {
+      if (Array.isArray(rule) && rule.length === 2 && ((Object.is(rule[0], a) && Object.is(rule[1], b)) || (Object.is(rule[0], b) && Object.is(rule[1], a)))) return { found: true, rule, result };
+      const text = String(rule);
+      const candidates = [`${a}+${b}`, `${b}+${a}`, `${a}|${b}`, `${b}|${a}`, JSON.stringify([a, b]), JSON.stringify([b, a])];
+      if (candidates.includes(text) || (Object.is(a, b) && Object.is(rule, a))) return { found: true, rule, result };
     }
-
-    // 支持以二元数组作为 Map 键的配置方式。
-    for (const [ruleKey, resultKey] of this.rules) {
-      if (!Array.isArray(ruleKey) || ruleKey.length !== 2) {
-        continue;
-      }
-
-      const matchesForward =
-        Object.is(ruleKey[0], keyA) && Object.is(ruleKey[1], keyB);
-      const matchesReverse =
-        Object.is(ruleKey[0], keyB) && Object.is(ruleKey[1], keyA);
-
-      if (matchesForward || matchesReverse) {
-        return { found: true, resultKey };
-      }
-    }
-
-    // 同类合并可直接配置为 sourceKey -> resultKey。
-    if (Object.is(keyA, keyB) && this.rules.has(keyA)) {
-      return { found: true, resultKey: this.rules.get(keyA) };
-    }
-
-    return { found: false, resultKey: undefined };
+    return { found: false };
   }
 
-  // 二元合并默认不区分顺序，并兼容常见的字符串组合键格式。
-  _buildPairKeys(keyA, keyB) {
-    const pairs = [[keyA, keyB]];
-    const candidates = [];
-
-    if (!Object.is(keyA, keyB)) {
-      pairs.push([keyB, keyA]);
-    }
-
-    for (const [left, right] of pairs) {
-      const leftText = String(left);
-      const rightText = String(right);
-
-      candidates.push(
-        `${leftText}+${rightText}`,
-        `${leftText}|${rightText}`,
-        `${leftText}:${rightText}`,
-        `${leftText},${rightText}`,
-        JSON.stringify([left, right])
-      );
-    }
-
-    return [...new Set(candidates)];
+  #fail(reason, keys, items) {
+    const payload = { ok: false, reason, keys, items, result: null };
+    this.eventBus.emit(MERGE_EVENTS.FAILED, payload);
+    return payload;
   }
-
-  // 结果配置为对象时复制一份，避免复用并修改规则表中的对象。
-  _createMergedItem(resultKey) {
-    if (resultKey !== null && typeof resultKey === "object") {
-      return Array.isArray(resultKey) ? [...resultKey] : { ...resultKey };
-    }
-
-    return { key: resultKey };
-  }
-
-  _emitFailure(reason) {
-    EventBus.emit(MERGE_FAIL, reason);
-    return false;
-  }
+  enable() { this.#assertAlive(); this.enabled = true; }
+  disable() { this.#assertAlive(); this.enabled = false; }
+  reset() { this.#assertAlive(); this.enabled = true; }
+  destroy() { this.destroyed = true; this.rules = new Map(); }
+  #assertAlive() { if (this.destroyed) throw new Error("Merger is destroyed"); }
 }
 
 export default Merger;

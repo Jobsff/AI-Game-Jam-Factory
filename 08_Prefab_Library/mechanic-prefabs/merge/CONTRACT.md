@@ -1,29 +1,31 @@
-# Merge 预制件契约
+# Merger 契约
 
 ## 职责
-实现"两个物体合并成一个新物体"的合成机制：接收合成请求，判断能否合并，产出结果。
+按可配置且顺序无关的规则匹配两个条目并生成结构化结果。
 
-## 输入
-- 两个待合并对象（或对象 ID）
-- 可选的合并规则表（哪些能合成、合成结果是什么）
+## 非职责
+不销毁输入对象，不创建 UI，不修改全局状态。
 
-## 输出事件（通过 EventBus）
-- `MERGE_SUCCESS`：合并成功（携带新对象）
-- `MERGE_FAIL`：合并失败（携带原因）
+## 公共 API
+- `new Merger(config)`；`config.eventBus` 可注入，缺省使用共享 EventBus。
+- `merge(itemA, itemB)`
+- `enable()`
+- `disable()`
+- `reset()`
+- `destroy()`
 
-## 接口
-```js
-new Merger(scene, config)
-// config: { rules: Map<key, resultKey> }
-merger.merge(itemA, itemB)
-```
+## 事件 payload
+- `merge:succeeded`：`{ ok:true, keys, items, rule, result }`
+- `merge:failed`：`{ ok:false, reason, keys, items, result:null }`
 
-## 禁止事项
-- ❌ 不直接操作 UI
-- ❌ 不修改游戏全局状态（只发事件）
-- ❌ 不创建 Scene
+## 失败行为
+非法配置或调用已销毁实例会抛出显式 `TypeError`、`RangeError` 或 `Error`；禁用状态不会产生成功事件。业务性失败会按上述失败事件返回结构化 payload。
+
+## 依赖
+EventBus。除 Phaser 表现/输入适配外，不依赖第三方 npm 包。
 
 ## 验收标准
-1. 两个符合规则的对象合并后触发 MERGE_SUCCESS，产出新对象
-2. 不符合规则时触发 MERGE_FAIL
-3. 合并规则可配置，不写死在代码里
+1. 命名导出事件常量、`Merger`，并默认导出 `Merger`。
+2. 所有跨模块变化只经 EventBus 输出，实例不修改全局游戏状态。
+3. 生命周期方法行为可重复验证，`destroy()` 清除该实例创建的监听或计时器。
+4. 浏览器 ES Module 与 Node 20+ 可解析；非视觉逻辑可用轻量 mock 测试。

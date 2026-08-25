@@ -1,27 +1,34 @@
-# Health 预制件契约
+# HealthSystem 契约
 
 ## 职责
-管理生命值：扣血/回血/清零/读取，扣到 0 发事件。
+维护有上下界的实例生命值并报告耗尽。
 
-## 输入
-- 最大生命值、初始生命值
+## 非职责
+不显示血条，不处理死亡或复活流程。
 
-## 输出事件（通过 EventBus）
-- `HEALTH_CHANGED`：血量变化（携带当前/最大）
-- `HEALTH_ZERO`：血量归零（死亡/失败）
+## 公共 API
+- `new HealthSystem(config)`；`config.eventBus` 可注入，缺省使用共享 EventBus。
+- `damage(amount)`
+- `heal(amount)`
+- `get()`
+- `enable()`
+- `disable()`
+- `reset()`
+- `destroy()`
 
-## 接口
-```js
-new HealthSystem(scene, config)
-// config: { max: 100, initial: 100 }
-health.damage(n) / health.heal(n) / health.reset() / health.get()
-```
+## 事件 payload
+- `health:changed`：`{ value, max, previous, delta }`
+- `health:depleted`：`{ value, max, previous, delta }`
+- `health:reset`：`{ value, max, previous, delta }`
 
-## 禁止事项
-- ❌ 不负责显示血条（显示由 UI 层监听事件做）
-- ❌ 不决定"死亡后发生什么"（只发事件）
+## 失败行为
+非法配置或调用已销毁实例会抛出显式 `TypeError`、`RangeError` 或 `Error`；禁用状态不会产生成功事件。业务性失败会按上述失败事件返回结构化 payload。
+
+## 依赖
+EventBus。除 Phaser 表现/输入适配外，不依赖第三方 npm 包。
 
 ## 验收标准
-1. damage/heal 正确更新血量并触发 HEALTH_CHANGED
-2. 血量到 0 触发 HEALTH_ZERO
-3. 血量不会超过 max，不会低于 0
+1. 命名导出事件常量、`HealthSystem`，并默认导出 `HealthSystem`。
+2. 所有跨模块变化只经 EventBus 输出，实例不修改全局游戏状态。
+3. 生命周期方法行为可重复验证，`destroy()` 清除该实例创建的监听或计时器。
+4. 浏览器 ES Module 与 Node 20+ 可解析；非视觉逻辑可用轻量 mock 测试。

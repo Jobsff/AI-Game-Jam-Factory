@@ -1,26 +1,41 @@
-// 通用按钮组件：统一 UI 风格，带按下反馈
-export default class Button extends Phaser.GameObjects.Container {
-  constructor(scene, x, y, label, { width = 240, height = 80, bgColor = 0x3d5afe, onClick } = {}) {
-    super(scene, x, y);
+import { UIButton, BUTTON_EVENTS } from "../../08_Prefab_Library/presentation-prefabs/button/UIButton.js";
 
-    const g = scene.add.graphics();
-    g.fillStyle(bgColor, 1);
-    g.fillRoundedRect(-width / 2, -height / 2, width, height, 20);
-    this.add(g);
+/**
+ * UIButton 的兼容入口。
+ * 新代码使用 new Button(scene, config)；旧代码仍可使用
+ * new Button(scene, x, y, label, options)。
+ */
+export class Button extends UIButton {
+  constructor(scene, xOrConfig = 0, y = 0, label = "", options = {}) {
+    const usesConfig = xOrConfig !== null && typeof xOrConfig === "object" && !Array.isArray(xOrConfig);
+    const config = usesConfig
+      ? { ...xOrConfig }
+      : { ...(options ?? {}), x: xOrConfig, y, label };
 
-    const text = scene.add.text(0, 0, label, {
-      fontSize: "30px", color: "#ffffff", fontStyle: "bold",
-    }).setOrigin(0.5);
-    this.add(text);
+    if (config.onClick !== undefined && typeof config.onClick !== "function") {
+      throw new TypeError("onClick must be a function");
+    }
 
-    this.setSize(width, height);
-    this.setInteractive(new Phaser.Geom.Rectangle(-width / 2, -height / 2, width, height), Phaser.Geom.Rectangle.Contains);
+    super(scene, config);
 
-    this.on("pointerdown", () => {
-      this.scene.tweens.add({ targets: this, scale: 0.92, duration: 80, yoyo: true });
-      if (onClick) onClick();
-    });
-
-    scene.add.existing(this);
+    if (config.onClick) {
+      const unsubscribe = this.eventBus.on(BUTTON_EVENTS.CLICKED, (payload) => {
+        if (payload.button === this) config.onClick(payload);
+      });
+      this.lifecycle.add(unsubscribe);
+    }
   }
+
+  get x() { return this.container.x; }
+  set x(value) { this.container.x = value; }
+  get y() { return this.container.y; }
+  set y(value) { this.container.y = value; }
+  setPosition(x, y = x) { this.container.setPosition(x, y); return this; }
+  setVisible(value) { this.container.setVisible(value); return this; }
+  setDepth(value) { this.container.setDepth(value); return this; }
+  setAlpha(value) { this.container.setAlpha(value); return this; }
+  setScale(x, y = x) { this.container.setScale(x, y); return this; }
 }
+
+export { UIButton, BUTTON_EVENTS };
+export default Button;

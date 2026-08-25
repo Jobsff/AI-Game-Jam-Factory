@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "scale": { "minimum": 1, "maximum": 5 },
+  "metrics": [
+    { "id": "playability", "label": "30 秒核心玩法清晰度", "weight": 25 },
+    { "id": "finish", "label": "48 小时完成概率", "weight": 25 },
+    { "id": "theme", "label": "主题成为机制的程度", "weight": 15 },
+    { "id": "memory", "label": "评委记忆点", "weight": 15 },
+    { "id": "ai", "label": "AI 融合自然程度", "weight": 10 },
+    { "id": "child", "label": "儿童真实贡献辨识度", "weight": 10 }
+  ],
+  "hardElimination": [
+    { "id": "finish", "operator": "lt", "value": 3, "reason": "48 小时完成概率低于 3/5" },
+    { "id": "playability", "operator": "lt", "value": 4, "reason": "30 秒核心玩法清晰度低于 4/5" },
+    { "id": "coreArtCount", "operator": "gt", "value": 10, "reason": "核心美术超过 10 张且尚未降级" }
+  ],
+  "tieBreakOrder": ["finish", "playability", "memory", "name"]
+}

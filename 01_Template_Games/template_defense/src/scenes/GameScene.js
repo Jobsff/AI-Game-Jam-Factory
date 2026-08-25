@@ -1,83 +1,50 @@
-// 模板2：保护/防守/守护
-// 核心循环：敌人从边缘逼近核心目标 → 点击敌人消灭 → 保护目标血量 → 坚持到胜利/血量归零失败
-// 状态机：READY -> WAVE -> DEFEND -> WIN / FAIL
+import LifecycleBag from "#factory/core/LifecycleBag.js";
+import Clickable, { CLICK_EVENTS } from "#prefabs/mechanic-prefabs/click/Clickable.js";
+import CountdownTimer, { TIMER_EVENTS } from "#prefabs/mechanic-prefabs/timer/CountdownTimer.js";
+import Spawner from "#prefabs/mechanic-prefabs/spawn/Spawner.js";
+import HealthSystem, { HEALTH_EVENTS } from "#prefabs/system-prefabs/health/HealthSystem.js";
+import StateMachine from "#prefabs/system-prefabs/state-machine/StateMachine.js";
+import EventBus, { EVENTS } from "../events.js"; import { GAME_CONFIG } from "../data/gameConfig.js";
+
 export default class GameScene extends Phaser.Scene {
-  constructor() {
-    super("GameScene");
-  }
-
+  constructor() { super("GameScene"); }
   create() {
-    this.state = "READY";
-    this.hp = 5;        // 核心目标血量
-    this.wave = 0;
-    this.maxWave = 5;   // 坚持 5 波胜利
-
-    // 核心目标（占位：中心大色块，后续换成 AI 生成的核心物）
-    this.core = this.add.circle(360, 640, 90, 0x4fc3f7);
-    this.hpText = this.add.text(360, 200, `核心 HP: ${this.hp}`, {
-      fontSize: "30px", color: "#ffffff",
-    }).setOrigin(0.5);
-
-    this.enemies = this.add.group();
-
-    this.add.text(360, 100, "点击敌人，保护核心！", {
-      fontSize: "30px", color: "#ffffff",
-    }).setOrigin(0.5);
-
-    this.startWave();
+    this.lifecycle = new LifecycleBag(); this.restartPending = false; this.enemies = new Set(); this.clickables = new Map(); this.remaining = GAME_CONFIG.duration;
+    this.machine = new StateMachine({ initial: "READY", states: { READY: {}, PLAYING: {}, WIN: {}, FAIL: {} }, eventBus: EventBus });
+    this.health = new HealthSystem({ max: GAME_CONFIG.health, eventBus: EventBus });
+    this.timer = new CountdownTimer({ duration: GAME_CONFIG.duration, eventBus: EventBus });
+    this.add.image(360, 650, "core").setScale(2.1); this.add.circle(360, 650, 125, 0x5eead4, 0.12);
+    this.spawner = new Spawner({ interval: GAME_CONFIG.spawnEveryMs, eventBus: EventBus, factory: () => this.spawnEnemy() });
+    this.lifecycle.add(EventBus.on(CLICK_EVENTS.CLICKED, ({ target }) => this.clearEnemy(target)));
+    this.lifecycle.add(EventBus.on(TIMER_EVENTS.TICKED, ({ remaining }) => { this.remaining = remaining; this.publishHud(); }));
+    this.lifecycle.add(EventBus.on(TIMER_EVENTS.ENDED, () => this.finish("WIN")));
+    this.lifecycle.add(EventBus.on(HEALTH_EVENTS.CHANGED, () => this.publishHud()));
+    this.lifecycle.add(EventBus.on(HEALTH_EVENTS.DEPLETED, () => this.finish("FAIL")));
+    this.lifecycle.add(EventBus.on(EVENTS.UI_READY, () => this.publishHud()));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.scene.launch("UIScene"); this.machine.change("PLAYING"); this.spawner.spawnOne(); this.spawner.start(); this.timer.start(); this.publishHud();
   }
-
-  startWave() {
-    this.state = "WAVE";
-    this.wave++;
-    // 每波生成 wave+2 个敌人
-    for (let i = 0; i < this.wave + 2; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const ex = 360 + Math.cos(angle) * 500;
-      const ey = 640 + Math.sin(angle) * 500;
-      const enemy = this.add.circle(ex, ey, 32, 0xff5252);
-      enemy.setInteractive();
-      enemy.on("pointerdown", () => { enemy.destroy(); });
-      this.enemies.add(enemy);
-    }
-    this.state = "DEFEND";
+  spawnEnemy() {
+    const side = Phaser.Math.Between(0, 3); const points = [[Phaser.Math.Between(30,690),180],[690,Phaser.Math.Between(180,1160)],[Phaser.Math.Between(30,690),1160],[30,Phaser.Math.Between(180,1160)]];
+    const enemy = this.add.image(...points[side], "enemy").setScale(0.9); this.enemies.add(enemy); this.clickables.set(enemy, new Clickable(this, enemy, { eventBus: EventBus })); return enemy;
   }
-
-  update() {
-    if (this.state !== "DEFEND") return;
-
-    // 敌人向核心移动，碰到核心扣血
-    this.enemies.getChildren().forEach((enemy) => {
-      if (!enemy.active) return;
-      this.physics = this.physics || null;
-      const dx = 360 - enemy.x;
-      const dy = 640 - enemy.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < 95) {
-        enemy.destroy();
-        this.hp--;
-        this.hpText.setText(`核心 HP: ${this.hp}`);
-        if (this.hp <= 0) this.gameOver(false);
-      } else {
-        enemy.x += (dx / dist) * 1.5;
-        enemy.y += (dy / dist) * 1.5;
-      }
+  clearEnemy(enemy) { if (this.machine.get() !== "PLAYING" || !this.enemies.has(enemy)) return; this.removeEnemy(enemy); }
+  removeEnemy(enemy) { this.clickables.get(enemy)?.destroy(); this.clickables.delete(enemy); this.enemies.delete(enemy); enemy.destroy(); }
+  update(_time, delta) {
+    if (this.machine?.get() !== "PLAYING") return;
+    for (const enemy of [...this.enemies]) { const angle = Phaser.Math.Angle.Between(enemy.x, enemy.y, 360, 650); const distance = GAME_CONFIG.enemySpeed * delta / 1000; enemy.x += Math.cos(angle) * distance; enemy.y += Math.sin(angle) * distance; if (Phaser.Math.Distance.Between(enemy.x, enemy.y, 360, 650) < 125) { this.removeEnemy(enemy); this.health.damage(1); } }
+  }
+  publishHud() { EventBus.emit(EVENTS.HUD, { title: GAME_CONFIG.title, status: `核心生命 ${this.health.get()} / ${GAME_CONFIG.health}　剩余 ${this.remaining}s` }); }
+  finish(state) { if (this.machine.get() !== "PLAYING") return; this.machine.change(state); this.spawner.stop(); this.timer.pause(); for (const click of this.clickables.values()) click.disable(); EventBus.emit(EVENTS.RESULT, { message: state === "WIN" ? "🛡️ 守护成功！" : "💥 核心失守" }); this.armRestart(); }
+  armRestart() {
+    if (this.restartPending) return;
+    this.restartPending = true;
+    const delayed = this.time.delayedCall(200, () => {
+      const restart = () => this.scene.restart();
+      this.input.once("pointerdown", restart);
+      this.lifecycle.add(() => this.input.off("pointerdown", restart));
     });
-
-    // 波清空 → 下一波或胜利
-    if (this.enemies.getChildren().every((e) => !e.active)) {
-      if (this.wave >= this.maxWave) this.gameOver(true);
-      else this.startWave();
-    }
+    this.lifecycle.timer(delayed);
   }
-
-  gameOver(win) {
-    this.state = win ? "WIN" : "FAIL";
-    const msg = win ? "🎉 守护成功！" : "💔 守护失败";
-    this.add.text(360, 640, msg, {
-      fontSize: "56px", color: win ? "#ffd54a" : "#ff5252",
-    }).setOrigin(0.5);
-    this.add.text(360, 900, "点击重新开始", { fontSize: "28px", color: "#ffffff" }).setOrigin(0.5);
-    this.input.once("pointerdown", () => this.scene.restart());
-  }
+  shutdown() { if (this.scene.isActive("UIScene")) this.scene.stop("UIScene"); for (const click of this.clickables.values()) click.destroy(); this.clickables.clear(); this.spawner?.destroy(); this.timer?.destroy(); this.health?.destroy(); this.machine?.destroy(); this.lifecycle?.destroy(); }
 }

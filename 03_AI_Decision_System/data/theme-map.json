@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "angles": [
+    { "id": "literal", "label": "字面角度", "question": "主题中可被玩家直接看见或操作的对象是什么？" },
+    { "id": "emotional", "label": "情绪角度", "question": "希望玩家在 30 秒内感到什么？" },
+    { "id": "mechanical", "label": "机制角度", "question": "主题怎样改变规则，而不只是换皮？" },
+    { "id": "counter", "label": "反常识角度", "question": "把主题反过来或误读一次，会出现什么惊喜？" }
+  ],
+  "keywordHints": [
+    { "keywords": ["治愈", "温暖", "陪伴", "重生", "创造", "新生"], "actions": ["collect", "defense"] },
+    { "keywords": ["友情", "家庭", "爱", "自然", "环保", "守护"], "actions": ["defense", "collect"] },
+    { "keywords": ["秘密", "发现", "真相", "谜", "隐藏"], "actions": ["find", "collect"] },
+    { "keywords": ["未来", "AI", "命运", "时间", "选择"], "actions": ["choice", "collect"] },
+    { "keywords": ["战争", "危机", "末日", "速度", "挑战", "竞技"], "actions": ["action", "defense"] }
+  ]
+}

@@ -1,35 +1,29 @@
-# Click 预制件生成提示词
+# 用 Codex 重建 Clickable
 
-1. Context（背景）
-我们在构建一个 Phaser 3 H5 的 AI Game Jam 预制件库（Prefab Library）。
-技术约束：Phaser 3 + 原生 JavaScript + ES Module + CDN 加载，无构建工具。
+## Context
+Phaser 3、原生 JavaScript、ES Module、无构建工具；浏览器运行，Node 20+ 使用 `node:test`。
 
-2. Goal（目标）
-实现 Clickable 预制件，职责是：让任意游戏对象可被点击，点击后通过 EventBus 发出事件。
+## Goal
+为任意可交互对象提供带冷却的点击检测。
 
-3. Files Allowed（允许修改的文件）
-只允许创建：
-- Clickable.js
-禁止修改任何其他文件。
+## Files Allowed
+- `08_Prefab_Library/mechanic-prefabs/click/Clickable.js`
+- `tests/` 中仅与 `click` 直接相关的测试文件
 
-4. Interface（接口）
-```js
-new Clickable(scene, gameObject, config)
-// config 可选字段：{ cooldown: 0, onClick: null }
-// 挂载后对象自动 setInteractive，点击触发 OBJECT_CLICKED 事件
-```
+## Public Interface
+`new Clickable(scene, gameObject, config)`，公开方法：enable(), disable(), reset(), destroy()。必须命名导出事件常量、主类并默认导出主类。
 
-5. Events（事件）
-- OBJECT_CLICKED：点击成功时发出，参数为被点击对象引用
+## Events
+- `click:clicked`：`{ target, pointer, at }`
 
-6. Constraints（约束，必须遵守）
-- 不引入任何外部依赖
-- 不修改 Scene / 全局状态（用 EventBus 通信）
-- 不用全局变量
-- 代码注释用中文，命名用英文
-- 单一职责：只负责"点击检测 + 发事件"，不处理点击后的业务逻辑
+## Non-goals
+不执行得分、掉落或其他业务规则。 禁止引入框架、构建链、全局可变状态或运行时 npm 依赖。
 
-7. Acceptance Test（验收标准）
-- 给任意 Phaser 对象挂载后，点击能触发 OBJECT_CLICKED 事件
-- 设置 cooldown 后，冷却期内重复点击不触发
-- 不引入外部依赖，单个文件可独立运行
+## Failure Behaviour
+无效配置、无效数值或销毁后调用必须显式抛错；不得静默失败。可预期的业务失败必须返回并发送结构化 payload。
+
+## Acceptance Tests
+1. 使用 Node 内置 `node:test` 覆盖成功、失败、禁用、重置和销毁路径。
+2. 验证事件名及 payload 字段，验证 `config.eventBus` 注入和共享 EventBus 默认值。
+3. 验证 `destroy()` 后不存在遗留监听或计时器。
+4. `npm test`、`npm run validate`、`git diff --check` 全部通过。

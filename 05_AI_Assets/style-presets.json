@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "policy": "Presets describe visual properties and do not name artists, franchises, or specific works.",
+  "presets": [
+    { "id": "paper-cut-glow", "label": "纸层微光", "shapes": "圆角剪纸层叠", "palette": ["#10233D", "#FFCF70", "#F06C9B", "#D8F3DC"], "materials": "哑光纸纤维", "lighting": "柔和边缘背光", "motion": "轻微分层视差" },
+    { "id": "soft-clay-diorama", "label": "软陶微缩", "shapes": "粗圆轮廓与玩具比例", "palette": ["#284B63", "#F4D35E", "#EE964B", "#FAF0CA"], "materials": "指压软陶与无反射底座", "lighting": "单侧柔光", "motion": "短促 squash and stretch" },
+    { "id": "night-signal-geometry", "label": "夜色信号几何", "shapes": "大块几何与高辨识图标", "palette": ["#07111F", "#66D9FF", "#FF5D8F", "#F9C74F"], "materials": "纯色与细颗粒", "lighting": "局部信号光", "motion": "脉冲、扫描、轨迹" }
+  ]
+}

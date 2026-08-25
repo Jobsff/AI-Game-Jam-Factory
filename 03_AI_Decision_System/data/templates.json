@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "templates": [
+    { "id": "collect", "class": "A", "action": "创造东西", "name": "收集／重组／创造", "template": "template_collect_create", "loop": "收集碎片 → 组合 → 产生新结果" },
+    { "id": "defense", "class": "B", "action": "保护东西", "name": "保护／防守／守护", "template": "template_defense", "loop": "识别威胁 → 处理威胁 → 守住目标" },
+    { "id": "choice", "class": "C", "action": "做选择", "name": "选择／分支／后果", "template": "template_choice", "loop": "读局面 → 做选择 → 世界反馈" },
+    { "id": "action", "class": "D", "action": "操作挑战", "name": "反应／躲避／操作", "template": "template_action", "loop": "观察信号 → 操作 → 即时反馈" },
+    { "id": "find", "class": "E", "action": "发现秘密", "name": "寻找／观察／解谜", "template": "template_find", "loop": "观察 → 发现线索 → 揭示秘密" }
+  ]
+}

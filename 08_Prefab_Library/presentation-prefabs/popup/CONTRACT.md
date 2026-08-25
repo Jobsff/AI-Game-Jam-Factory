@@ -1,27 +1,33 @@
-# Popup 预制件契约
+# Popup 契约
 
 ## 职责
-提供弹窗：半透明遮罩 + 居中面板，可配置标题/内容/按钮，弹出/关闭带动画。
+创建带遮罩、内容和动作事件的 Phaser 弹窗。
 
-## 输入
-- 标题、内容文本、按钮列表
-- 可选：是否点击遮罩关闭
+## 非职责
+不执行按钮业务，不暂停 Scene，不修改游戏状态。
 
-## 输出事件（通过 EventBus）
-- `POPUP_OPENED` / `POPUP_CLOSED`
+## 公共 API
+- `new Popup(scene, config)`；`config.eventBus` 可注入，缺省使用共享 EventBus。
+- `open()`
+- `close()`
+- `enable()`
+- `disable()`
+- `reset()`
+- `destroy()`
 
-## 接口
-```js
-new Popup(scene, config)
-// config: { title, content, buttons: [{label, onClick}], maskClose: true }
-popup.open() / popup.close()
-```
+## 事件 payload
+- `popup:opened`：`{ id, popup }`
+- `popup:closed`：`{ id, popup }`
+- `popup:action`：`{ id, action, pointer, popup }`
 
-## 禁止事项
-- ❌ 不处理弹窗按钮的业务逻辑（用 buttons 的 onClick）
-- ❌ 不依赖具体游戏状态
+## 失败行为
+非法配置或调用已销毁实例会抛出显式 `TypeError`、`RangeError` 或 `Error`；禁用状态不会产生成功事件。业务性失败会按上述失败事件返回结构化 payload。
+
+## 依赖
+EventBus, LifecycleBag, Phaser Scene。除 Phaser 表现/输入适配外，不依赖第三方 npm 包。
 
 ## 验收标准
-1. 弹出显示遮罩 + 面板 + 标题内容，带弹出动画
-2. 点击按钮触发对应 onClick
-3. 关闭时带动画并触发 POPUP_CLOSED
+1. 命名导出事件常量、`Popup`，并默认导出 `Popup`。
+2. 所有跨模块变化只经 EventBus 输出，实例不修改全局游戏状态。
+3. 生命周期方法行为可重复验证，`destroy()` 清除该实例创建的监听或计时器。
+4. 浏览器 ES Module 与 Node 20+ 可解析；非视觉逻辑可用轻量 mock 测试。

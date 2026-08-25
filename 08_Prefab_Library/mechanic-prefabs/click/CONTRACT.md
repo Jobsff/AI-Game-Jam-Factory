@@ -1,27 +1,29 @@
-# Click 预制件契约
+# Clickable 契约
 
 ## 职责
-为游戏对象提供"点击目标"交互：对象可被点击，点击后触发事件。
+为任意可交互对象提供带冷却的点击检测。
 
-## 输入
-- 一个 Phaser 游戏对象（Sprite/Image/Shape/Container）
-- 可选配置：点击冷却时间、点击反馈动画
+## 非职责
+不执行得分、掉落或其他业务规则。
 
-## 输出事件（通过 EventBus）
-- `OBJECT_CLICKED`：携带被点击对象的引用
+## 公共 API
+- `new Clickable(scene, gameObject, config)`；`config.eventBus` 可注入，缺省使用共享 EventBus。
+- `enable()`
+- `disable()`
+- `reset()`
+- `destroy()`
 
-## 接口
-```js
-new Clickable(scene, gameObject, config)
-// config: { cooldown?: number, onClick?: function }
-```
+## 事件 payload
+- `click:clicked`：`{ target, pointer, at }`
 
-## 禁止事项
-- ❌ 不直接修改游戏状态（只发事件）
-- ❌ 不处理业务逻辑（点击后干什么由监听方决定）
-- ❌ 不依赖具体游戏对象类型
+## 失败行为
+非法配置或调用已销毁实例会抛出显式 `TypeError`、`RangeError` 或 `Error`；禁用状态不会产生成功事件。业务性失败会按上述失败事件返回结构化 payload。
+
+## 依赖
+EventBus, Phaser input/game object（浏览器运行时）。除 Phaser 表现/输入适配外，不依赖第三方 npm 包。
 
 ## 验收标准
-1. 给任意对象挂上后，点击能触发 `OBJECT_CLICKED` 事件
-2. 设置 cooldown 后，冷却期内重复点击不触发
-3. 不引入外部依赖，单个文件可独立运行
+1. 命名导出事件常量、`Clickable`，并默认导出 `Clickable`。
+2. 所有跨模块变化只经 EventBus 输出，实例不修改全局游戏状态。
+3. 生命周期方法行为可重复验证，`destroy()` 清除该实例创建的监听或计时器。
+4. 浏览器 ES Module 与 Node 20+ 可解析；非视觉逻辑可用轻量 mock 测试。

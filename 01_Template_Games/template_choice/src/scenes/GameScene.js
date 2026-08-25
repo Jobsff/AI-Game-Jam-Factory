@@ -1,64 +1,50 @@
-// 模板3：选择/分支/后果
-// 核心循环：出现两难选择 → 点击选择 → 世界状态改变 → 多轮后走向不同结局
-// 状态机：START -> CHOOSING -> WORLD_CHANGE -> ENDING
-// 特点：核心不是 update，是"数据驱动"（选择改变 state 数据）
+import LifecycleBag from "#factory/core/LifecycleBag.js";
+import GameState from "#factory/core/GameState.js";
+import Clickable, { CLICK_EVENTS } from "#prefabs/mechanic-prefabs/click/Clickable.js";
+import StateMachine from "#prefabs/system-prefabs/state-machine/StateMachine.js";
+import EventBus, { EVENTS } from "../events.js"; import { GAME_CONFIG } from "../data/gameConfig.js";
+
 export default class GameScene extends Phaser.Scene {
-  constructor() {
-    super("GameScene");
-  }
-
+  constructor() { super("GameScene"); }
   create() {
-    this.state = "CHOOSING";
-    this.round = 0;
-    this.maxRound = 3;
-    // 世界状态（单一真源，选择改变它，结局由它决定）
-    this.world = { kindness: 0, power: 0 };
-
-    this.title = this.add.text(360, 120, "你的选择会改变世界", {
-      fontSize: "34px", color: "#ffffff",
-    }).setOrigin(0.5);
-
-    this.showChoice();
+    this.lifecycle = new LifecycleBag(); this.restartPending = false; this.round = 0; this.buttons = []; this.clickables = [];
+    this.world = new GameState({ initial: { kindness: 0, order: 0 }, eventBus: EventBus });
+    this.machine = new StateMachine({ initial: "CHOOSING", states: { CHOOSING: {}, RESOLVING: {}, ENDING: {} }, eventBus: EventBus });
+    this.prompt = this.add.text(360, 310, "", { fontSize: "38px", color: "#ffffff", align: "center", wordWrap: { width: 600 } }).setOrigin(0.5);
+    this.worldText = this.add.text(360, 850, "", { fontSize: "27px", color: "#a7f3d0", align: "center" }).setOrigin(0.5);
+    this.lifecycle.add(EventBus.on(CLICK_EVENTS.CLICKED, ({ target }) => this.resolve(target.getData("option"))));
+    this.lifecycle.add(EventBus.on(EVENTS.UI_READY, () => this.publishHud()));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.shutdown());
+    this.scene.launch("UIScene"); this.showRound();
   }
-
-  // 展示一轮选择（占位：后续换成有剧情的选择）
-  showChoice() {
-    if (this.round >= this.maxRound) return this.showEnding();
-
-    this.round++;
-    this.clearButtons();
-    this.title.setText(`第 ${this.round} 次选择：你会怎么做？`);
-
-    // 两个选择按钮
-    const btnA = this.add.text(360, 400, "A. 帮助它", {
-      fontSize: "36px", color: "#ffffff", backgroundColor: "#388e3c",
-      padding: { x: 24, y: 12 },
-    }).setOrigin(0.5).setInteractive();
-    const btnB = this.add.text(360, 600, "B. 挑战它", {
-      fontSize: "36px", color: "#ffffff", backgroundColor: "#d32f2f",
-      padding: { x: 24, y: 12 },
-    }).setOrigin(0.5).setInteractive();
-
-    btnA.on("pointerdown", () => { this.world.kindness++; this.showChoice(); });
-    btnB.on("pointerdown", () => { this.world.power++; this.showChoice(); });
-
-    this.buttons = [btnA, btnB];
+  showRound() {
+    this.clearButtons(); this.machine.get() === "RESOLVING" && this.machine.change("CHOOSING");
+    const round = GAME_CONFIG.rounds[this.round]; this.prompt.setText(round.prompt);
+    round.options.forEach((option, index) => { const y = 500 + index * 170; const box = this.add.rectangle(360, y, 570, 110, index ? 0xb4535a : 0x287c74).setData("option", option); const label = this.add.text(360, y, option.label, { fontSize: "31px", color: "#ffffff" }).setOrigin(0.5); this.buttons.push(box, label); this.clickables.push(new Clickable(this, box, { eventBus: EventBus })); });
+    this.publishHud();
   }
-
-  clearButtons() {
-    if (this.buttons) this.buttons.forEach((b) => b.destroy());
-    this.buttons = [];
+  resolve(option) {
+    if (this.machine.get() !== "CHOOSING" || !option) return; this.machine.change("RESOLVING");
+    const snapshot = this.world.snapshot(); this.world.update({ kindness: snapshot.kindness + option.effects.kindness, order: snapshot.order + option.effects.order });
+    this.round += 1; this.worldText.setText(`善意 ${this.world.get("kindness")}　秩序 ${this.world.get("order")}\n世界正在回应你的选择……`); this.clearButtons();
+    const delayed = this.time.delayedCall(550, () => this.round >= GAME_CONFIG.rounds.length ? this.showEnding() : this.showRound()); this.lifecycle.timer(delayed);
   }
-
   showEnding() {
-    this.state = "ENDING";
-    this.clearButtons();
-    // 结局由世界状态决定
-    const ending = this.world.kindness > this.world.power
-      ? "🌱 你选择善良，世界开满花"
-      : "⚔️ 你选择力量，世界走向变革";
-    this.title.setText(ending);
-    this.add.text(360, 900, "点击重新开始", { fontSize: "28px", color: "#ffffff" }).setOrigin(0.5);
-    this.input.once("pointerdown", () => this.scene.restart());
+    this.machine.change("ENDING"); const kind = this.world.get("kindness"), order = this.world.get("order");
+    const ending = kind > order ? "🌿 共生结局：世界因信任重生" : order > kind ? "🏛️ 秩序结局：世界在规则中延续" : "🌗 平衡结局：世界走上中间道路";
+    this.prompt.setText(ending); EventBus.emit(EVENTS.RESULT, { message: ending }); this.armRestart();
   }
+  clearButtons() { this.clickables.splice(0).forEach((item) => item.destroy()); this.buttons.splice(0).forEach((item) => item.destroy()); }
+  publishHud() { EventBus.emit(EVENTS.HUD, { title: GAME_CONFIG.title, status: `第 ${Math.min(this.round + 1, 3)} / 3 轮　善意 ${this.world.get("kindness")}　秩序 ${this.world.get("order")}` }); }
+  armRestart() {
+    if (this.restartPending) return;
+    this.restartPending = true;
+    const delayed = this.time.delayedCall(200, () => {
+      const restart = () => this.scene.restart();
+      this.input.once("pointerdown", restart);
+      this.lifecycle.add(() => this.input.off("pointerdown", restart));
+    });
+    this.lifecycle.timer(delayed);
+  }
+  shutdown() { if (this.scene.isActive("UIScene")) this.scene.stop("UIScene"); this.clearButtons(); this.world?.destroy(); this.machine?.destroy(); this.lifecycle?.destroy(); }
 }

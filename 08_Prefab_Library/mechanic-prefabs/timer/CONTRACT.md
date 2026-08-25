@@ -1,31 +1,34 @@
-# Timer 预制件契约
+# CountdownTimer 契约
 
 ## 职责
-提供倒计时/计时挑战能力：倒计时结束发事件，支持暂停/继续/重置。
+提供秒级倒计时、暂停、恢复、循环和清理。
 
-## 输入
-- 时长（秒）
-- 可选：是否循环、时间到回调
+## 非职责
+不显示时间，不决定结束后的游戏流程。
 
-## 输出事件（通过 EventBus）
-- `TIMER_TICK`：每秒（可选，携带剩余秒数）
-- `TIMER_END`：倒计时结束
+## 公共 API
+- `new CountdownTimer(config)`；`config.eventBus` 可注入，缺省使用共享 EventBus。
+- `start()`
+- `pause()`
+- `resume()`
+- `enable()`
+- `disable()`
+- `reset()`
+- `destroy()`
 
-## 接口
-```js
-new Timer(scene, config)
-// config: { duration: 30, loop: false, tick: false }
-timer.start()
-timer.pause()
-timer.resume()
-timer.reset()
-```
+## 事件 payload
+- `timer:ticked`：`{ remaining, duration }`
+- `timer:ended`：`{ duration, loop }`
+- `timer:state-changed`：`{ previous, current, remaining }`
 
-## 禁止事项
-- ❌ 不负责显示倒计时文字（显示由 UI 层监听事件做）
-- ❌ 不修改游戏全局状态
+## 失败行为
+非法配置或调用已销毁实例会抛出显式 `TypeError`、`RangeError` 或 `Error`；禁用状态不会产生成功事件。业务性失败会按上述失败事件返回结构化 payload。
+
+## 依赖
+EventBus, setInterval/clearInterval。除 Phaser 表现/输入适配外，不依赖第三方 npm 包。
 
 ## 验收标准
-1. 倒计时到 0 触发 TIMER_END
-2. 支持暂停/继续/重置
-3. 设置 tick 后每秒触发 TIMER_TICK
+1. 命名导出事件常量、`CountdownTimer`，并默认导出 `CountdownTimer`。
+2. 所有跨模块变化只经 EventBus 输出，实例不修改全局游戏状态。
+3. 生命周期方法行为可重复验证，`destroy()` 清除该实例创建的监听或计时器。
+4. 浏览器 ES Module 与 Node 20+ 可解析；非视觉逻辑可用轻量 mock 测试。

@@ -1,12 +1,34 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>Template 4 - 反应/躲避/操作</title>
-  <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.0/dist/phaser.min.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <title>闪避操作母件</title>
+  <style>
+    html,body,#game{width:100%;height:100%;margin:0;background:#101827;overflow:hidden;touch-action:none}
+    #load-error{display:none;position:fixed;inset:0;z-index:10;padding:2rem;background:#190d18;color:#fff;font:18px/1.5 system-ui;white-space:pre-wrap}
+  </style>
+  <script type="importmap">{"imports":{"#factory/":"../../02_Game_Core/","#prefabs/":"../../08_Prefab_Library/"}}</script>
 </head>
 <body>
-  <script type="module" src="./src/main.js"></script>
+  <div id="game"></div><pre id="load-error" role="alert"></pre>
+  <script>
+    const errorBox=document.querySelector('#load-error');
+    const showError=(value)=>{errorBox.style.display='block';errorBox.textContent='游戏加载失败。\n'+(value?.stack||value?.message||String(value))+'\n请确认使用 npm run serve 启动，并检查 vendor/Phaser 文件。';};
+    addEventListener('error',(event)=>showError(event.error||event.message));
+    addEventListener('unhandledrejection',(event)=>showError(event.reason));
+    const start=()=>import('./src/main.js').catch(showError);
+    const phaser=document.createElement('script');
+    phaser.src='../../vendor/phaser.min.js';
+    phaser.onload=start;
+    phaser.onerror=()=>{
+      const fallback=document.createElement('script');
+      fallback.src='https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js';
+      fallback.onload=start;
+      fallback.onerror=()=>showError(new Error('本地 Phaser 与固定版本 CDN 均加载失败'));
+      document.head.append(fallback);
+    };
+    document.head.append(phaser);
+  </script>
 </body>
 </html>

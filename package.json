@@ -1,0 +1,22 @@
+{
+  "name": "ai-game-jam-factory",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "validate": "node scripts/validate.mjs",
+    "serve": "node scripts/serve.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "new-game": "node scripts/create-game.mjs",
+    "browser-smoke": "node scripts/browser-smoke.mjs",
+    "cache-phaser": "node scripts/cache-phaser.mjs",
+    "verify": "npm test && npm run validate && npm run smoke && npm run browser-smoke"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "imports": {
+    "#factory/*": "./02_Game_Core/*",
+    "#prefabs/*": "./08_Prefab_Library/*"
+  }
+}

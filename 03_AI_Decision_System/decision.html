@@ -1,192 +1,415 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Game Jam 选题决策器</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Game Jam 60 分钟决策器</title>
 <style>
-  :root { --bg:#f5f7fb; --card:#ffffff; --text:#1f2733; --muted:#6b7280; --blue:#2563eb; --blue-l:#eaf1fe; --green:#16a34a; --red:#dc2626; --gold:#f59e0b; }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--text); padding:24px; line-height:1.6; }
-  .wrap { max-width:720px; margin:0 auto; }
-  h1 { font-size:24px; margin-bottom:4px; }
-  .sub { color:var(--muted); font-size:14px; margin-bottom:20px; }
-  .card { background:var(--card); border-radius:14px; padding:20px; margin-bottom:16px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
-  .card h2 { font-size:16px; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
-  .step { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; background:var(--blue); color:#fff; border-radius:50%; font-size:13px; font-weight:600; }
-  input[type=text] { width:100%; padding:12px 14px; border:1px solid #d1d5db; border-radius:10px; font-size:16px; outline:none; }
-  input[type=text]:focus { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-l); }
-  .chip-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-  .chip { padding:8px 16px; border-radius:20px; background:#eef2f7; cursor:pointer; font-size:14px; border:2px solid transparent; user-select:none; }
-  .chip.active { background:var(--blue-l); border-color:var(--blue); color:var(--blue); font-weight:600; }
-  .result-box { background:var(--blue-l); border-radius:10px; padding:14px; margin-top:12px; font-size:15px; }
-  .result-box b { color:var(--blue); }
-  .score-row { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f0f0; }
-  .score-row:last-child { border-bottom:none; }
-  .metric-name { font-size:14px; }
-  .metric-weight { color:var(--muted); font-size:12px; margin-left:6px; }
-  select { padding:6px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:15px; }
-  .total { font-size:22px; font-weight:700; color:var(--blue); text-align:right; padding:12px 0; }
-  .verdict { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:16px; margin-top:12px; }
-  .verdict h3 { color:var(--green); margin-bottom:8px; }
-  .verdict p { font-size:14px; margin-bottom:4px; }
-  .warn { color:var(--red); }
-  .hint { color:var(--muted); font-size:13px; }
+:root{--bg:#08111f;--card:#111f32;--ink:#edf6ff;--muted:#9fb0c5;--accent:#66d9ff;--ok:#51d88a;--bad:#ff6b79;--line:#29405d}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,"PingFang SC",sans-serif}main{max-width:1180px;margin:auto;padding:28px 18px 80px}h1{margin:0;font-size:clamp(28px,5vw,50px)}h2{font-size:20px;margin:0 0 14px}.lead,.hint{color:var(--muted)}.toolbar,.actions,.grid,.angles{display:grid;gap:10px}.toolbar{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:18px 0}.grid{grid-template-columns:repeat(3,minmax(0,1fr))}.angles{grid-template-columns:repeat(2,minmax(0,1fr))}.card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:18px;margin:12px 0}label{display:block;color:var(--muted);font-weight:700;margin:8px 0 4px}input,textarea,select,button{width:100%;border:1px solid var(--line);border-radius:9px;background:#091526;color:var(--ink);padding:10px;font:inherit}textarea{min-height:72px;resize:vertical}button{cursor:pointer;background:#163454;font-weight:750}button:hover{border-color:var(--accent)}button.primary{background:var(--accent);color:#06101c}.actions{grid-template-columns:repeat(5,1fr)}.action.active{outline:2px solid var(--accent)}.candidate{position:relative}.candidate.eliminated{border-color:var(--bad)}.badge{display:inline-block;padding:3px 8px;border-radius:99px;background:#223b59;color:var(--accent);font-size:12px}.bad{color:var(--bad)}.ok{color:var(--ok)}.score{font-size:28px;font-weight:900}.rank{position:absolute;right:14px;top:14px}.result{border:2px solid var(--ok)}table{width:100%;border-collapse:collapse}td,th{padding:7px;border-bottom:1px solid var(--line);text-align:left}.metric{display:grid;grid-template-columns:1fr 76px;gap:8px;align-items:center}.metric label{margin:4px 0}@media(max-width:820px){.grid,.angles,.actions{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr 1fr}}
 </style>
 </head>
-<body>
-<div class="wrap">
-  <h1>🎯 AI Game Jam 选题决策器</h1>
-  <p class="sub">主题公布后 60 秒内 → 分类 → 推荐模板 → 打分 → 拍板。全自动算分，不靠感觉。</p>
+<body><main>
+<h1>60 分钟唯一方案决策器</h1>
+<p class="lead">主题输入 → 四角度拆解 → 20 个儿童原始点子 → 5 秒动作分类 → 同时评分 3 个候选 → 硬淘汰 → 自动排序 → 人类拍板。</p><p class="hint" id="storageState">正在检查本地保存能力……</p>
+<div class="toolbar"><button id="exportMd">导出 Markdown</button><button id="exportJson">导出 JSON</button><button id="copyContext">复制给 AI 圆桌的上下文</button><button id="reset">重置全部</button></div>
 
-  <!-- Step 1: 输入主题 -->
-  <div class="card">
-    <h2><span class="step">1</span> 输入现场主题</h2>
-    <input type="text" id="theme" placeholder="例如：重生 / 守护 / 最后一束光 / 时间..." oninput="render()">
-    <div class="hint">只填主题关键词，先别想游戏。</div>
-  </div>
+<section class="card"><h2>1. 现场主题</h2><label for="theme">词／句／画面描述</label><textarea id="theme" placeholder="例：暴雨后，一颗种子在废墟中发光"></textarea><p class="hint" id="themeHint">输入后只给模板提示，不替人做价值判断。</p></section>
+<section class="card"><h2>2. 四类答题角度</h2><div class="angles" id="angles"></div></section>
+<section class="card"><h2>3. 儿童原始点子</h2><label for="rawIdeas">按原话记录 Q1–Q10／X1–X10，不替孩子润色</label><textarea id="rawIdeas" placeholder="Q1 玩家……然后……
+…
+X1 画面……玩家做……"></textarea></section>
+<section class="card"><h2>4. 5 秒动作分类</h2><p class="hint">立即回答“玩家主要在做什么？”；三候选可以不同类。</p><div class="actions" id="actions"></div></section>
+<section><h2>5. 三候选并行评分</h2><p class="hint">每项 1–5 分；加权总分 100。完成概率 &lt;3、玩法清晰度 &lt;4、核心美术 &gt;10 张时硬淘汰。</p><div class="grid" id="candidates"></div></section>
+<section class="card"><h2>6. 儿童价值判断与证据</h2><p class="hint">AI 扩搜索，孩子判断想不想玩、想保留什么；成人负责范围和最终拍板。</p><div class="angles" id="childJudgments"></div></section>
+<section class="card result"><h2>7. 唯一方案拍板</h2><div id="ranking"></div><label for="winner">唯一方案</label><select id="winner"></select><label for="decisionReason">拍板理由（必须说清 30 秒记忆点与 8 小时保底）</label><textarea id="decisionReason" placeholder="我们选择……因为……；若只剩 8 小时，仍可交付……"></textarea><button class="primary" id="lock">锁定唯一方案</button><p id="lockState" class="hint">尚未拍板。</p></section>
+<p class="hint">离线单文件：不请求服务器或 CDN。外部 JSON 供脚本读取；本页内嵌同源数据以支持 <code>file://</code>。</p>
 
-  <!-- Step 2: 情绪倾向 -->
-  <div class="card">
-    <h2><span class="step">2</span> 这个主题更偏什么情绪？</h2>
-    <div class="chip-row" id="emotionChips"></div>
-  </div>
-
-  <!-- Step 3: 玩家主要做什么（5秒分类） -->
-  <div class="card">
-    <h2><span class="step">3</span> 玩家主要在做什么？（5 秒分类法）</h2>
-    <div class="chip-row" id="actionChips"></div>
-    <div class="result-box" id="templateResult"></div>
-  </div>
-
-  <!-- Step 4: 评分 -->
-  <div class="card">
-    <h2><span class="step">4</span> 100 分评分表</h2>
-    <div id="scoreRows"></div>
-    <div class="total">总分：<span id="totalScore">0</span> / 100</div>
-  </div>
-
-  <!-- 结果 -->
-  <div class="card">
-    <h2><span class="step">5</span> 决策结论</h2>
-    <div id="verdict"></div>
-  </div>
-</div>
-
+<script id="theme-map-data" type="application/json">{"version":1,"angles":[{"id":"literal","label":"字面角度","question":"主题中可被玩家直接看见或操作的对象是什么？"},{"id":"emotional","label":"情绪角度","question":"希望玩家在 30 秒内感到什么？"},{"id":"mechanical","label":"机制角度","question":"主题怎样改变规则，而不只是换皮？"},{"id":"counter","label":"反常识角度","question":"把主题反过来或误读一次，会出现什么惊喜？"}],"keywordHints":[{"keywords":["治愈","温暖","陪伴","重生","创造","新生"],"actions":["collect","defense"]},{"keywords":["友情","家庭","爱","自然","环保","守护"],"actions":["defense","collect"]},{"keywords":["秘密","发现","真相","谜","隐藏"],"actions":["find","collect"]},{"keywords":["未来","AI","命运","时间","选择"],"actions":["choice","collect"]},{"keywords":["战争","危机","末日","速度","挑战","竞技"],"actions":["action","defense"]}]}</script>
+<script id="templates-data" type="application/json">{"version":1,"templates":[{"id":"collect","class":"A","action":"创造东西","name":"收集／重组／创造","template":"template_collect_create","loop":"收集碎片 → 组合 → 产生新结果"},{"id":"defense","class":"B","action":"保护东西","name":"保护／防守／守护","template":"template_defense","loop":"识别威胁 → 处理威胁 → 守住目标"},{"id":"choice","class":"C","action":"做选择","name":"选择／分支／后果","template":"template_choice","loop":"读局面 → 做选择 → 世界反馈"},{"id":"action","class":"D","action":"操作挑战","name":"反应／躲避／操作","template":"template_action","loop":"观察信号 → 操作 → 即时反馈"},{"id":"find","class":"E","action":"发现秘密","name":"寻找／观察／解谜","template":"template_find","loop":"观察 → 发现线索 → 揭示秘密"}]}</script>
+<script id="scoring-model-data" type="application/json">{"version":1,"scale":{"minimum":1,"maximum":5},"metrics":[{"id":"playability","label":"30 秒核心玩法清晰度","weight":25},{"id":"finish","label":"48 小时完成概率","weight":25},{"id":"theme","label":"主题成为机制的程度","weight":15},{"id":"memory","label":"评委记忆点","weight":15},{"id":"ai","label":"AI 融合自然程度","weight":10},{"id":"child","label":"儿童真实贡献辨识度","weight":10}],"hardElimination":[{"id":"finish","operator":"lt","value":3,"reason":"48 小时完成概率低于 3/5"},{"id":"playability","operator":"lt","value":4,"reason":"30 秒核心玩法清晰度低于 4/5"},{"id":"coreArtCount","operator":"gt","value":10,"reason":"核心美术超过 10 张且尚未降级"}],"tieBreakOrder":["finish","playability","memory","name"]}</script>
 <script>
-// ===== 数据 =====
-const EMOTIONS = ["治愈/温暖","刺激/冒险","神秘/探索","创造/新生","守护/责任","竞技/挑战"];
-const ACTIONS = [
-  { key:"collect", label:"A 创造东西", tpl:"template_collect_create", name:"收集/重组/创造" },
-  { key:"defense", label:"B 保护东西", tpl:"template_defense", name:"保护/防守/守护" },
-  { key:"choice",  label:"C 做选择",   tpl:"template_choice",  name:"选择/分支/后果" },
-  { key:"action",  label:"D 操作挑战", tpl:"template_action",  name:"反应/躲避/操作" },
-  { key:"find",    label:"E 发现秘密", tpl:"template_find",    name:"寻找/观察/解谜" },
-];
+"use strict";
+const STORAGE_KEY = "ai-game-jam-decision-v4";
+const themeMap = JSON.parse(document.querySelector("#theme-map-data").textContent);
+const templates = JSON.parse(document.querySelector("#templates-data").textContent);
+const model = JSON.parse(document.querySelector("#scoring-model-data").textContent);
+const actionIds = new Set(templates.templates.map((item) => item.id));
+let storageNotice = "";
 
-// 情绪 → 推荐动作（第一选择/第二选择）
-const EMOTION_MAP = {
-  "治愈/温暖": ["collect","defense"],
-  "刺激/冒险": ["action","defense"],
-  "神秘/探索": ["find","collect"],
-  "创造/新生": ["collect","choice"],
-  "守护/责任": ["defense","collect"],
-  "竞技/挑战": ["action","defense"],
+const clamp = (value, minimum, maximum, fallback) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(maximum, Math.max(minimum, number)) : fallback;
 };
+const asText = (value, fallback = "") => typeof value === "string" ? value : fallback;
+const blankCandidate = (index) => ({
+  name: `候选 ${index + 1}`,
+  pitch: "",
+  action: templates.templates[index]?.id ?? "collect",
+  coreArtCount: 3,
+  scores: Object.fromEntries(model.metrics.map((metric) => [metric.id, 3])),
+});
+const blank = () => ({
+  theme: "",
+  angles: Object.fromEntries(themeMap.angles.map((angle) => [angle.id, ""])),
+  rawIdeas: "",
+  selectedAction: "collect",
+  candidates: [0, 1, 2].map(blankCandidate),
+  childJudgments: { qianqianPlay: "", xuanxuanVisual: "", sharedUnexpected: "", evidencePath: "" },
+  winner: "",
+  decisionReason: "",
+  lockedAt: "",
+});
 
-const METRICS = [
-  { key:"playability", name:"30秒核心玩法清晰度", weight:5 },
-  { key:"finish",      name:"48小时完成概率",     weight:5 },
-  { key:"theme",       name:"主题创新解释力",     weight:3 },
-  { key:"memory",      name:"评委记忆点",         weight:3 },
-  { key:"ai",          name:"AI融合自然程度",     weight:2 },
-  { key:"family",      name:"父女团队独特性",     weight:2 },
-];
+function normalizeCandidate(source, index) {
+  const fallback = blankCandidate(index);
+  const candidate = source && typeof source === "object" ? source : {};
+  return {
+    name: asText(candidate.name, fallback.name),
+    pitch: asText(candidate.pitch),
+    action: actionIds.has(candidate.action) ? candidate.action : fallback.action,
+    coreArtCount: Math.round(clamp(candidate.coreArtCount, 0, 99, fallback.coreArtCount)),
+    scores: Object.fromEntries(model.metrics.map((metric) => [
+      metric.id,
+      Math.round(clamp(candidate.scores?.[metric.id], model.scale.minimum, model.scale.maximum, fallback.scores[metric.id])),
+    ])),
+  };
+}
 
-let state = { emotion:null, action:null, scores:{} };
-METRICS.forEach(m => state.scores[m.key] = 3);
+function normalizeState(source) {
+  const base = blank();
+  const saved = source && typeof source === "object" ? source : {};
+  const winner = ["", "0", "1", "2"].includes(String(saved.winner ?? "")) ? String(saved.winner ?? "") : "";
+  return {
+    ...base,
+    theme: asText(saved.theme),
+    angles: Object.fromEntries(themeMap.angles.map((angle) => [angle.id, asText(saved.angles?.[angle.id])])),
+    rawIdeas: asText(saved.rawIdeas),
+    selectedAction: actionIds.has(saved.selectedAction) ? saved.selectedAction : base.selectedAction,
+    candidates: [0, 1, 2].map((index) => normalizeCandidate(saved.candidates?.[index], index)),
+    childJudgments: {
+      qianqianPlay: asText(saved.childJudgments?.qianqianPlay),
+      xuanxuanVisual: asText(saved.childJudgments?.xuanxuanVisual),
+      sharedUnexpected: asText(saved.childJudgments?.sharedUnexpected),
+      evidencePath: asText(saved.childJudgments?.evidencePath),
+    },
+    winner,
+    decisionReason: asText(saved.decisionReason),
+    lockedAt: asText(saved.lockedAt),
+  };
+}
 
-// ===== 渲染 =====
-function renderEmotionChips(){
-  const el = document.getElementById("emotionChips");
-  el.innerHTML = EMOTIONS.map(e =>
-    `<div class="chip ${state.emotion===e?'active':''}" onclick="setEmotion('${e}')">${e}</div>`
-  ).join("");
-}
-function renderActionChips(){
-  const el = document.getElementById("actionChips");
-  el.innerHTML = ACTIONS.map(a =>
-    `<div class="chip ${state.action===a.key?'active':''}" onclick="setAction('${a.key}')">${a.label}</div>`
-  ).join("");
-}
-function renderScores(){
-  const el = document.getElementById("scoreRows");
-  el.innerHTML = METRICS.map(m =>
-    `<div class="score-row">
-      <span class="metric-name">${m.name}<span class="metric-weight">×${m.weight}</span></span>
-      <select onchange="setScore('${m.key}', this.value)">
-        ${[1,2,3,4,5].map(v => `<option value="${v}" ${state.scores[m.key]==v?'selected':''}>${v} 分</option>`).join("")}
-      </select>
-    </div>`
-  ).join("");
-  calcTotal();
-}
-function renderTemplate(){
-  const box = document.getElementById("templateResult");
-  if(!state.action){ box.innerHTML = "👆 选一个玩家动作，自动推荐模板"; return; }
-  const a = ACTIONS.find(x => x.key === state.action);
-  const emotionRec = state.emotion ? EMOTION_MAP[state.emotion] : null;
-  let extra = "";
-  if(emotionRec && emotionRec[0] === state.action){
-    extra = ` ✅ 与「${state.emotion}」情绪高度匹配`;
-  } else if(emotionRec && emotionRec[1] === state.action){
-    extra = ` ⭕ 与「${state.emotion}」情绪第二匹配`;
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return normalizeState(raw ? JSON.parse(raw) : null);
+  } catch (error) {
+    storageNotice = `本浏览器无法读取本地保存：${error.message}。仍可使用导出 Markdown/JSON。`;
+    return blank();
   }
-  box.innerHTML = `推荐模板：<b>${a.name}</b>（目录 <b>${a.tpl}</b>）${extra}`;
-}
-function calcTotal(){
-  let total = 0;
-  METRICS.forEach(m => total += state.scores[m.key] * m.weight);
-  document.getElementById("totalScore").textContent = total;
-  renderVerdict(total);
-}
-function renderVerdict(total){
-  const el = document.getElementById("verdict");
-  const theme = document.getElementById("theme").value || "（未填主题）";
-  const a = state.action ? ACTIONS.find(x => x.key===state.action) : null;
-
-  // 淘汰规则
-  const finish = state.scores.finish;
-  const play = state.scores.playability;
-  if(finish < 3){ el.innerHTML = `<div class="verdict"><h3>🚫 淘汰：完成概率过低</h3><p class="warn">48h 完成概率 &lt;3 分，直接淘汰，换方案。</p></div>`; return; }
-  if(play < 4){ el.innerHTML = `<div class="verdict"><h3>🚫 淘汰：核心玩法不清晰</h3><p class="warn">核心玩法 &lt;4 分，玩法立不住，回 Step 3 重想。</p></div>`; return; }
-
-  let verdict = "🟡 中规中矩，可做但缺记忆点";
-  if(total >= 80) verdict = "🟢 高概率冲奖，拍板开工";
-  else if(total >= 65) verdict = "🟢 值得做，重点补记忆点";
-
-  const tpl = a ? a.tpl : "（未选模板）";
-  el.innerHTML = `
-    <div class="verdict">
-      <h3>${verdict}</h3>
-      <p><b>主题：</b>${theme}</p>
-      <p><b>模板：</b>${tpl}${a ? "（"+a.name+"）" : ""}</p>
-      <p><b>总分：</b>${total} / 100</p>
-      <p><b>下一步：</b>复制模板目录 → 用 architecture.md 让 Codex 建项目地图 → 开工</p>
-    </div>`;
 }
 
-// ===== 事件 =====
-function setEmotion(e){ state.emotion = e; renderEmotionChips(); renderTemplate(); }
-function setAction(k){ state.action = k; renderActionChips(); renderTemplate(); }
-function setScore(k, v){ state.scores[k] = parseInt(v); calcTotal(); }
-function render(){
-  renderEmotionChips();
-  renderActionChips();
-  renderTemplate();
-  renderScores();
+let state = load();
+
+function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    storageNotice = "已自动保存在本机浏览器；修改锁定方案会自动解锁。";
+  } catch (error) {
+    storageNotice = `本浏览器阻止本地保存：${error.message}。请频繁导出 Markdown/JSON。`;
+  }
+  renderStorageState();
 }
-render();
-</script>
-</body>
-</html>
+
+function save({ preserveLock = false } = {}) {
+  if (!preserveLock) state.lockedAt = "";
+  persist();
+  renderResult();
+}
+
+function node(tag, attributes = {}, text = "") {
+  const element = document.createElement(tag);
+  for (const [key, value] of Object.entries(attributes)) {
+    if (key.startsWith("on")) element.addEventListener(key.slice(2), value);
+    else element.setAttribute(key, value);
+  }
+  element.textContent = text;
+  return element;
+}
+
+function score(candidate) {
+  return model.metrics.reduce((sum, metric) => sum + candidate.scores[metric.id] / model.scale.maximum * metric.weight, 0);
+}
+
+function reasons(candidate) {
+  return model.hardElimination.flatMap((rule) => {
+    const value = rule.id === "coreArtCount" ? candidate.coreArtCount : candidate.scores[rule.id];
+    const hit = rule.operator === "lt" ? value < rule.value : value > rule.value;
+    return hit ? [rule.reason] : [];
+  });
+}
+
+function ranked() {
+  return state.candidates.map((candidate, index) => ({
+    ...candidate,
+    index,
+    total: score(candidate),
+    eliminated: reasons(candidate),
+  })).sort((left, right) => {
+    if (!!left.eliminated.length !== !!right.eliminated.length) return left.eliminated.length ? 1 : -1;
+    if (right.total !== left.total) return right.total - left.total;
+    for (const key of model.tieBreakOrder) {
+      if (key === "name") {
+        const byName = left.name.localeCompare(right.name, "zh-CN");
+        if (byName) return byName;
+        continue;
+      }
+      const delta = right.scores[key] - left.scores[key];
+      if (delta) return delta;
+    }
+    return left.index - right.index;
+  });
+}
+
+function field(label, value, oninput, type = "text", attributes = {}) {
+  const wrap = node("div");
+  wrap.append(node("label", {}, label));
+  const control = node(type === "textarea" ? "textarea" : "input", type === "textarea" ? attributes : { type, ...attributes });
+  control.value = value;
+  control.addEventListener("input", (event) => oninput(event.target.value));
+  wrap.append(control);
+  return wrap;
+}
+
+function renderStorageState() {
+  const target = document.querySelector("#storageState");
+  if (target) target.textContent = storageNotice || "尚未产生修改；首次输入后会尝试保存在本机。";
+}
+
+function renderStatic() {
+  const theme = document.querySelector("#theme");
+  theme.value = state.theme;
+  theme.addEventListener("input", (event) => {
+    state.theme = event.target.value;
+    save();
+    renderThemeHint();
+  });
+
+  const angles = document.querySelector("#angles");
+  themeMap.angles.forEach((angle) => angles.append(field(
+    `${angle.label}｜${angle.question}`,
+    state.angles[angle.id],
+    (value) => { state.angles[angle.id] = value; save(); },
+    "textarea",
+  )));
+
+  const rawIdeas = document.querySelector("#rawIdeas");
+  rawIdeas.value = state.rawIdeas;
+  rawIdeas.addEventListener("input", (event) => { state.rawIdeas = event.target.value; save(); });
+
+  const judgmentFields = [
+    ["qianqianPlay", "芊芊：最想反复玩的候选与原话"],
+    ["xuanxuanVisual", "萱萱：最想保留的画面与原话"],
+    ["sharedUnexpected", "两人：最不像别人做的候选／分歧"],
+    ["evidencePath", "证据路径（草图／日志／照片，仅最小必要信息）"],
+  ];
+  const judgments = document.querySelector("#childJudgments");
+  for (const [key, label] of judgmentFields) judgments.append(field(
+    label,
+    state.childJudgments[key],
+    (value) => { state.childJudgments[key] = value; save(); },
+    key === "evidencePath" ? "text" : "textarea",
+  ));
+
+  renderActions();
+  renderCandidates();
+  renderThemeHint();
+  renderStorageState();
+}
+
+function renderActions() {
+  const actions = document.querySelector("#actions");
+  actions.replaceChildren();
+  templates.templates.forEach((item) => {
+    const button = node("button", { class: `action ${state.selectedAction === item.id ? "active" : ""}` }, `${item.class} ${item.action}\n${item.name}`);
+    button.addEventListener("click", () => {
+      state.selectedAction = item.id;
+      state.candidates[0].action = item.id;
+      save();
+      renderActions();
+      renderCandidates();
+    });
+    actions.append(button);
+  });
+}
+
+function renderThemeHint() {
+  const value = state.theme.toLowerCase();
+  const hits = themeMap.keywordHints.find((hint) => hint.keywords.some((keyword) => value.includes(keyword.toLowerCase())));
+  const names = (hits?.actions ?? []).map((id) => templates.templates.find((item) => item.id === id)?.name).filter(Boolean);
+  document.querySelector("#themeHint").textContent = names.length
+    ? `关键词提示：先比较 ${names.join("、")}；这不是自动拍板。`
+    : "未命中预设关键词：待团队用四角度拆解后选择动作。";
+}
+
+function renderCandidates() {
+  const root = document.querySelector("#candidates");
+  root.replaceChildren();
+  state.candidates.forEach((candidate, index) => {
+    const eliminated = reasons(candidate);
+    const card = node("article", { class: `card candidate ${eliminated.length ? "eliminated" : ""}` });
+    card.dataset.index = index;
+    card.append(node("span", { class: "rank badge" }, `候选 ${index + 1}`));
+    card.append(field("方案名", candidate.name, (value) => { candidate.name = value; save(); }));
+    card.append(field("一句话玩法", candidate.pitch, (value) => { candidate.pitch = value; save(); }, "textarea"));
+
+    const label = node("label", {}, "5 秒动作分类");
+    const select = node("select");
+    templates.templates.forEach((item) => {
+      const option = node("option", { value: item.id }, `${item.class} ${item.action}｜${item.template}`);
+      option.selected = item.id === candidate.action;
+      select.append(option);
+    });
+    select.addEventListener("change", (event) => { candidate.action = event.target.value; save(); });
+    card.append(label, select);
+
+    card.append(field(
+      "核心美术张数",
+      candidate.coreArtCount,
+      (value) => { candidate.coreArtCount = Math.round(clamp(value, 0, 99, 0)); save(); },
+      "number",
+      { min: 0, max: 99, step: 1 },
+    ));
+
+    model.metrics.forEach((metric) => {
+      const row = node("div", { class: "metric" });
+      const metricLabel = node("label", {}, `${metric.label}（${metric.weight}%）`);
+      const metricSelect = node("select");
+      for (let value = model.scale.minimum; value <= model.scale.maximum; value += 1) {
+        const option = node("option", { value }, `${value} / ${model.scale.maximum}`);
+        option.selected = value === candidate.scores[metric.id];
+        metricSelect.append(option);
+      }
+      metricSelect.addEventListener("change", (event) => { candidate.scores[metric.id] = Number(event.target.value); save(); });
+      row.append(metricLabel, metricSelect);
+      card.append(row);
+    });
+
+    const summary = node("div");
+    summary.id = `summary-${index}`;
+    card.append(summary);
+    root.append(card);
+  });
+  renderResult();
+}
+
+function renderResult() {
+  const list = ranked();
+  const winnerIndex = Number(state.winner);
+  if (state.winner !== "" && (!Number.isInteger(winnerIndex) || !state.candidates[winnerIndex] || reasons(state.candidates[winnerIndex]).length)) {
+    state.winner = "";
+    state.lockedAt = "";
+    persist();
+  }
+
+  state.candidates.forEach((candidate, index) => {
+    const target = document.querySelector(`#summary-${index}`);
+    if (!target) return;
+    const eliminated = reasons(candidate);
+    target.className = eliminated.length ? "bad" : "ok";
+    target.textContent = `${score(candidate).toFixed(0)} / 100｜${eliminated.length ? `淘汰：${eliminated.join("；")}` : "保留"}`;
+    target.closest(".candidate")?.classList.toggle("eliminated", !!eliminated.length);
+  });
+
+  const ranking = document.querySelector("#ranking");
+  ranking.replaceChildren();
+  list.forEach((candidate, index) => ranking.append(node(
+    "p",
+    { class: candidate.eliminated.length ? "bad" : "ok" },
+    `${index + 1}. ${candidate.name || "未命名"}｜${candidate.total.toFixed(0)} 分｜${candidate.eliminated.length ? `淘汰：${candidate.eliminated.join("；")}` : "可拍板"}`,
+  )));
+
+  const winner = document.querySelector("#winner");
+  const current = state.winner;
+  winner.replaceChildren(node("option", { value: "" }, "请选择唯一方案"));
+  list.filter((item) => !item.eliminated.length).forEach((item) => {
+    const option = node("option", { value: String(item.index) }, `${item.name}｜${item.total.toFixed(0)} 分`);
+    option.selected = String(item.index) === current;
+    winner.append(option);
+  });
+  document.querySelector("#lockState").textContent = state.lockedAt
+    ? `已锁定：${state.candidates[Number(state.winner)]?.name}｜${state.lockedAt}。任何字段变化都会自动解锁。`
+    : "尚未拍板。";
+}
+
+function mdCell(value) {
+  return String(value ?? "").replaceAll("|", "\\|").replace(/\r?\n/g, "<br>");
+}
+
+function markdown() {
+  const rows = ranked().map((item, index) => `| ${index + 1} | ${mdCell(item.name)} | ${item.total.toFixed(0)} | ${mdCell(item.eliminated.length ? item.eliminated.join("；") : "保留")} |`).join("\n");
+  return `# Game Jam 选题决策\n\n- 主题：${state.theme || "待填写"}\n- 唯一方案：${state.winner === "" ? "待拍板" : state.candidates[Number(state.winner)].name}\n- 拍板理由：${state.decisionReason || "待填写"}\n- 锁定时间：${state.lockedAt || "待锁定"}\n\n## 四角度\n${themeMap.angles.map((angle) => `- ${angle.label}：${state.angles[angle.id] || "待填写"}`).join("\n")}\n\n## 儿童原始点子\n${state.rawIdeas || "待填写"}\n\n## 儿童价值判断\n- 芊芊最想玩：${state.childJudgments.qianqianPlay || "待填写"}\n- 萱萱最想保留的画面：${state.childJudgments.xuanxuanVisual || "待填写"}\n- 最不像别人／分歧：${state.childJudgments.sharedUnexpected || "待填写"}\n- 证据路径：${state.childJudgments.evidencePath || "待填写"}\n\n## 自动排序\n| 排名 | 方案 | 得分 | 状态 |\n|---|---|---:|---|\n${rows}\n`;
+}
+
+function context() {
+  return `你是 AI Game Jam 四专家圆桌。请基于以下已有人类输入互相质疑，禁止新增第 4 候选，禁止替孩子或制作负责人拍板。\n\n${markdown()}\n候选详情：\n${state.candidates.map((candidate, index) => `${index + 1}. ${candidate.name}｜${candidate.pitch}｜动作 ${candidate.action}｜美术 ${candidate.coreArtCount} 张`).join("\n")}\n\n固定输出：共识、专家交叉质疑、每候选致命风险、5 分钟最小验证、给孩子的三道价值判断题、建议排序。所有不确定事实标“待核验”。`;
+}
+
+function download(name, type, content) {
+  const link = node("a", { href: URL.createObjectURL(new Blob([content], { type })), download: name });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 0);
+}
+
+async function copyText(content) {
+  if (navigator.clipboard?.writeText) {
+    try { await navigator.clipboard.writeText(content); return; } catch {}
+  }
+  const area = node("textarea");
+  area.value = content;
+  area.style.position = "fixed";
+  area.style.opacity = "0";
+  document.body.append(area);
+  area.select();
+  const copied = document.execCommand("copy");
+  area.remove();
+  if (!copied) throw new Error("copy failed");
+}
+
+document.querySelector("#winner").addEventListener("change", (event) => { state.winner = event.target.value; save(); });
+const reason = document.querySelector("#decisionReason");
+reason.value = state.decisionReason;
+reason.addEventListener("input", (event) => { state.decisionReason = event.target.value; save(); });
+document.querySelector("#lock").addEventListener("click", () => {
+  if (state.winner === "" || !state.decisionReason.trim()) {
+    alert("先选择唯一方案并填写拍板理由。复制上下文不会替代人工拍板。");
+    return;
+  }
+  state.lockedAt = new Date().toISOString();
+  save({ preserveLock: true });
+});
+document.querySelector("#reset").addEventListener("click", () => {
+  if (confirm("清空本机保存的主题、候选与拍板结果？")) {
+    state = blank();
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    location.reload();
+  }
+});
+document.querySelector("#exportMd").addEventListener("click", () => download("game-jam-decision.md", "text/markdown", markdown()));
+document.querySelector("#exportJson").addEventListener("click", () => download("game-jam-decision.json", "application/json", JSON.stringify({ ...state, ranking: ranked() }, null, 2)));
+document.querySelector("#copyContext").addEventListener("click", async () => {
+  const button = document.querySelector("#copyContext");
+  try { await copyText(context()); button.textContent = "已复制"; }
+  catch { button.textContent = "复制失败，请用导出 Markdown"; }
+  setTimeout(() => { button.textContent = "复制给 AI 圆桌的上下文"; }, 1600);
+});
+
+globalThis.__DECISION_TOOL__ = Object.freeze({
+  getState: () => structuredClone(state),
+  getRanking: () => structuredClone(ranked()),
+  markdown,
+  context,
+});
+
+renderStatic();
+</script></main></body></html>
