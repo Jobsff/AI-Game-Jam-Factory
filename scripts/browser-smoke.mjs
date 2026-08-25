@@ -136,6 +136,8 @@ export async function main({
       const child = spawn(chrome, [
         "--headless",
         "--disable-gpu",
+        "--use-gl=angle",
+        "--use-angle=swiftshader",
         "--no-sandbox",
         "--single-process",
         "--no-zygote",
