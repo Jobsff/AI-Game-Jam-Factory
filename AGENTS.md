@@ -1,33 +1,33 @@
-# Agent Execution Agreement
+# 智能体执行协议
 
-## Start
-- Declare `DELIVERY_MODE`: `PROTOTYPE` / `JAM_DEMO` / `VERTICAL_SLICE` / `COMMERCIAL`. This repository defaults to `JAM_DEMO`.
-- State the current milestone, deadline, acceptance criteria and stop condition before acting.
-- For formal development, read `GDD.md`, `TDD.md`, `GAME_MAP.md` and the relevant contract. For trials or prototypes, read only what the task needs.
+## 开工
+- 声明 `DELIVERY_MODE`：`PROTOTYPE` / `JAM_DEMO` / `VERTICAL_SLICE` / `COMMERCIAL`。本仓库默认 `JAM_DEMO`。
+- 行动前说明当前里程碑、截止时间、验收标准与停止条件。
+- 正式开发先读 `GDD.md`、`TDD.md`、`GAME_MAP.md` 与相关契约；试验或原型只读任务所需的内容。
 
-## Orchestration
-- The primary agent is the producer: it owns scope, schedule, delegation and final decisions.
-- Default to one agent. Delegate only bounded work that benefits from isolated context.
-- `KK3`: read-only review for ambiguous, irreversible or cross-module decisions.
-- `G53`: default and only production-code writer.
-- `MM3`: time-boxed delivery-blocker check at named milestones; never a continuous background audit.
+## 编排
+- 主智能体是制作人：拥有范围、时间、委派与最终决定权。
+- 默认单智能体完成；只把有边界、且隔离上下文有益的工作委派出去。
+- `KK3`：只读审查，用于含糊、不可逆或跨模块的决策。
+- `G53`：默认且唯一的生产代码写入者。
+- `MM3`：里程碑处的限时交付阻断检查；绝不做持续后台审计。
 
-## Delivery modes
-- `PROTOTYPE`: prove the idea quickly.
-- `JAM_DEMO`: finish a complete, memorable and stable demo on time.
-- `VERTICAL_SLICE`: prove maintainability and product potential.
-- `COMMERCIAL`: satisfy explicit release, security and reliability gates.
+## 交付模式
+- `PROTOTYPE`：快速验证想法值得做。
+- `JAM_DEMO`：按时交付完整、有记忆点且稳定的演示。
+- `VERTICAL_SLICE`：证明可维护性与产品潜力。
+- `COMMERCIAL`：满足明示的发布、安全与可靠性门槛。
 
-## Control limits
-- Every review has a scope, time budget and issue budget. For `JAM_DEMO`, MM3 defaults to 30 minutes and at most 5 findings.
-- P0/P1 block delivery. P2 is a producer decision. P3 goes to backlog.
-- One repair-and-regression loop is the default for a milestone; regression may not open a new attack surface.
-- Do not run a full roundtable for routine implementation or ordinary bug fixes.
+## 控制上限
+- 每次审查都有范围、时间预算与问题上限。`JAM_DEMO` 下 MM3 默认 30 分钟、最多 5 个发现。
+- P0/P1 阻断交付；P2 由制作人裁决；P3 进入 backlog。
+- 每个里程碑默认只允许一次「修复 → 回归」循环；回归不得开启新攻击面。
+- 日常实现与普通 Bug 修复不开完整圆桌。
 
-## Engineering discipline
-- Make the smallest change that satisfies the accepted goal; do not add unrequested systems or refactor unrelated code.
-- Preserve core loop, input ownership, public contracts and data formats unless the producer approves a change.
-- Protect existing work; do not use destructive Git commands. Commit or push only when explicitly authorized.
-- Report actual files changed, commands run, exit codes, unverified items and deferred work.
+## 工程纪律
+- 只做满足既定目标的最小改动；不加未请求的系统，不重构无关代码。
+- 未经制作人批准，不改核心循环、输入所有权、公共契约与数据格式。
+- 保护既有工作；禁止破坏性 Git 操作。commit 与 push 须明确授权。
+- 如实报告实际改动文件、执行的命令、退出码、未验证项与延后项。
 
-Factory operators: see `00_Command_Center/MULTI_AGENT_WORKFLOW.md` in the source repository.
+工厂操作者：见源仓库中的 `00_Command_Center/MULTI_AGENT_WORKFLOW.md`。
