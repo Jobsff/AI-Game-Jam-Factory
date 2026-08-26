@@ -15,7 +15,7 @@ npm run serve
 1. [ ] 打开 [`decision.html`](03_AI_Decision_System/decision.html)，确认可离线保存与导出。
 2. [ ] 进入 [`60 分钟决策 SOP`](00_Command_Center/60_MINUTE_DECISION_SOP.md)，主题公布后只保留 3 候选并锁定唯一方案。
 3. [ ] 生成新工程，把 GDD/TDD/GAME_MAP 与首个模块契约放入工程。
-4. [ ] Codex 按根 [`AGENTS.md`](AGENTS.md)每轮只改一个模块、最多 3 文件。
+4. [ ] 智能体按根 [`AGENTS.md`](AGENTS.md)与[多智能体工作流](00_Command_Center/MULTI_AGENT_WORKFLOW.md)工作：文件范围由任务包给定，做最小改动。
 5. [ ] 每个里程碑跑项目测试与四阶段清单；08-30 11:00 前完成视频。
 
 ## 现场 60 分钟入口
@@ -64,7 +64,7 @@ npm run new-game -- \
 | [`06_GameJam_Checklist/`](06_GameJam_Checklist/) | before-start/development/submission/presentation 四阶段勾选验收 |
 | [`07_Examples/`](07_Examples/) | 5 个结构配方与已提供获奖案例的待核验迁移规律 |
 | [`08_Prefab_Library/`](08_Prefab_Library/) | 11 个 Prefab、契约、Prompt 与 manifest |
-| [`AGENTS.md`](AGENTS.md) | Codex 三层地图/模块契约/Debug 协议 |
+| [`AGENTS.md`](AGENTS.md) | 智能体执行协议：交付模式、控制上限、工程纪律 |
 | [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) | 自研内容与 Phaser runtime 边界 |
 
 ## 第二阶段稳定接口（保留）
